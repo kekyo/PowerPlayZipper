@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net48;net5.0</TargetFrameworks>
+    <RootNamespace>PowerPlayZipper</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net5.0'">
+    <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <IncludeSymbolsInSingleFile>true</IncludeSymbolsInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mono.Options" Version="6.6.0.161" />
+    <PackageReference Include="RelaxVersioner" Version="2.3.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="('$(TargetFramework)' == 'net48') AND ('$(MSBuildRuntimeType)' == 'Full')">
+    <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" />
+  </ItemGroup>
+
+  <Target Name="ILRepack" AfterTargets="Build"
+          Condition="('$(TargetFramework)' == 'net48') AND ('$(MSBuildRuntimeType)' == 'Full')">
+    <PropertyGroup>
+      <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)</WorkingDirectory>
+    </PropertyGroup>
+    <ILRepack OutputType="$(OutputType)" MainAssembly="$(AssemblyName).exe" OutputAssembly="$(AssemblyName).exe" InputAssemblies="$(WorkingDirectory)\*.dll" WilcardInputAssemblies="true" WorkingDirectory="$(WorkingDirectory)" />
+  </Target>
+    
+</Project>
