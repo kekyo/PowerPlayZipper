@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PowerPlayZipper.Internal
 {
@@ -9,7 +8,7 @@ namespace PowerPlayZipper.Internal
     {
         private readonly Dictionary<string, ManualResetEventSlim?> processings = new();
 
-        public ValueTask CreateIfNotExistAsync(string directoryPath)
+        public void CreateIfNotExist(string directoryPath)
         {
             var firstTime = false;
             ManualResetEventSlim? locker;
@@ -25,30 +24,27 @@ namespace PowerPlayZipper.Internal
 
             if (firstTime)
             {
-                return new ValueTask(Task.Run(() =>
+                try
                 {
-                    try
+                    if (!Directory.Exists(directoryPath))
                     {
-                        if (!Directory.Exists(directoryPath))
+                        try
                         {
-                            try
-                            {
-                                Directory.CreateDirectory(directoryPath);
-                            }
-                            catch
-                            {
-                            }
+                            Directory.CreateDirectory(directoryPath);
+                        }
+                        catch
+                        {
                         }
                     }
-                    finally
+                }
+                finally
+                {
+                    lock (this.processings)
                     {
-                        lock (this.processings)
-                        {
-                            this.processings[directoryPath] = null;
-                        }
-                        locker!.Set();
+                        this.processings[directoryPath] = null;
                     }
-                }));
+                    locker!.Set();
+                }
             }
             else
             {
@@ -58,8 +54,6 @@ namespace PowerPlayZipper.Internal
                     locker.Wait();
                 }
             }
-
-            return default;
         }
     }
 }

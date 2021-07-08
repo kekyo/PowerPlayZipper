@@ -10,6 +10,5 @@ namespace PowerPlayZipper
         Directory = -1,
         Stored = 0,
         Deflate = 8,
-        Deflate64 = 9,
     }
 }

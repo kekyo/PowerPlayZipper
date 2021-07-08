@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,174 +42,251 @@ namespace PowerPlayZipper
 
         public event EventHandler<UnzippingEventArgs>? Unzipping;
 
-        private static bool IsSupported(CompressionMethods cm, GeneralPurposeBitFlags gpbf) =>
-            (cm, gpbf) switch
-            {
-                (_, GeneralPurposeBitFlags.Encrypted | GeneralPurposeBitFlags.ProduceDataDescriptor) => false,
-                (_, GeneralPurposeBitFlags.Encrypted) => false,
-                (_, GeneralPurposeBitFlags.ProduceDataDescriptor) => false,
-                (CompressionMethods.Deflate, _) => true,
-                (CompressionMethods.Stored, _) => true,
-                _ => false
-            };
-
-        private static bool IsDirectory(CompressionMethods cm, string fileName) =>
-            (cm == CompressionMethods.Stored) && fileName.EndsWith("/");
-
-        private async IAsyncEnumerable<ZippedFileEntry> EnumerateFilesAsync(
-            string zipFilePath, ReadOnlyRangedStreamFactory factory)
+        private sealed class UnzipCommonRoleContext
         {
-            using (var stream = new ReadEntryStream(zipFilePath))
+            // PAGE_SIZE
+            public const int EntryBufferSize = 4096;
+
+            public long HeaderPosition;
+            public readonly FileStream EntryStream;
+
+            public UnzipCommonRoleContext(string zipFilePath) =>
+                this.EntryStream = new FileStream(
+                    zipFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, EntryBufferSize);
+
+            public void Close() =>
+                this.EntryStream.Dispose();
+        }
+            
+        private sealed class UnzipThreadWorker
+        {
+            private const int PK0304HeaderSize = 32;
+            
+            private readonly UnzipContext context;
+            private readonly ReadOnlyRangedStream rangedStream;
+            private readonly byte[] entryBuffer;
+            private readonly Thread thread;
+
+            public UnzipThreadWorker(string zipFilePath, UnzipContext context)
+            {
+                this.context = context;
+                this.rangedStream = new ReadOnlyRangedStream(zipFilePath, 65536);
+                this.entryBuffer = new byte[UnzipCommonRoleContext.EntryBufferSize];
+                this.thread = new Thread(this.ThreadEntry);
+                this.thread.IsBackground = true;
+            }
+
+            public void StartConsume() =>
+                this.thread.Start();
+
+            public void FinishConsume()
+            {
+                // TODO:
+            }
+
+            private static bool IsSupported(CompressionMethods cm, GeneralPurposeBitFlags gpbf)
+            {
+                if ((gpbf & (GeneralPurposeBitFlags.Encrypted | GeneralPurposeBitFlags.ProduceDataDescriptor)) != 0)
+                {
+                    return false;
+                }
+                return (cm == CompressionMethods.Deflate) || (cm == CompressionMethods.Stored);
+            }
+
+            private static bool IsDirectory(CompressionMethods cm, string fileName) =>
+                (cm == CompressionMethods.Stored) && fileName.EndsWith("/");
+            
+            private void ThreadEntry()
             {
                 while (true)
                 {
-                    var (result, signature) = await stream.TryReadInt32Async().ConfigureAwait(false);
-                    if (!result)
+                    ///////////////////////////////////////////////////////////////////////
+                    // Dequeue next header fetching.
+
+                    // Spin loop
+                    var commonContext = Interlocked.Exchange(ref this.context.CommonRoleContext, null);
+                    if (commonContext == null)
                     {
+                        continue;
+                    }
+
+                    ///////////////////////////////////////////////////////////////////////
+                    // Common thread role.
+
+                    // Read first header bytes.
+                    commonContext.EntryStream.Position = commonContext.HeaderPosition;
+                    var read = commonContext.EntryStream.Read(
+                        this.entryBuffer, 0, UnzipCommonRoleContext.EntryBufferSize);
+                    if (read < PK0304HeaderSize)
+                    {
+                        // TODO: Finish
                         break;
                     }
-                    if (signature != 0x04034b50)
+
+                    var signature = BitConverter.ToUInt32(this.entryBuffer, 0);
+                    if (signature == 0x04034b50) // PK0304
                     {
+                        // TODO: Finish
                         break;
                     }
 
-                    var versionNeededToExtract = await stream.ReadInt16Async().ConfigureAwait(false);
-                    var generalPurposeBitFlag = (GeneralPurposeBitFlags)await stream.ReadInt16Async().ConfigureAwait(false);
-                    var compressionMethod = (CompressionMethods)await stream.ReadInt16Async().ConfigureAwait(false);
-                    var time = await stream.ReadInt16Async().ConfigureAwait(false);
-                    var date = await stream.ReadInt16Async().ConfigureAwait(false);
-                    var crc32 = await stream.ReadInt32Async().ConfigureAwait(false);
-                    var compressedSize = await stream.ReadInt32Async().ConfigureAwait(false);
-                    var originalSize = await stream.ReadInt32Async().ConfigureAwait(false);
-                    var fileNameLength = await stream.ReadInt16Async().ConfigureAwait(false);
-                    var commentLength = await stream.ReadInt16Async().ConfigureAwait(false);
-
-                    // TODO:
-                    var dateTime = default(DateTime);
-
-                    var fileNameBuffer = new byte[fileNameLength];
-                    var fileNameRead = await stream.ReadAsync(
-                        fileNameBuffer, 0, fileNameBuffer.Length).
-                        ConfigureAwait(false);
-                    if (fileNameRead != fileNameBuffer.Length)
+                    var fileNameLength = BitConverter.ToUInt16(this.entryBuffer, 28);
+                    if (fileNameLength == 0)
                     {
-                        throw new IOException();
+                        // TODO: error
+                        break;
                     }
 
-                    if (!this.isOnlySupported ||
-                        IsSupported(compressionMethod, generalPurposeBitFlag))
+                    var compressedSize = BitConverter.ToUInt32(this.entryBuffer, 20);
+                    var commentLength = BitConverter.ToUInt16(this.entryBuffer, 30);
+
+                    // Update next header position.
+                    var fileNamePosition = commonContext.HeaderPosition + PK0304HeaderSize;
+                    var streamPosition = fileNamePosition + fileNameLength + commentLength;
+                    commonContext.HeaderPosition = streamPosition + compressedSize;
+                    
+                    // Enqueue next header.
+                    this.context.CommonRoleContext = commonContext;
+
+                    ///////////////////////////////////////////////////////////////////////
+                    // Worker thread role.
+
+                    // Make safer.
+                    commonContext = null!;
+
+                    //var versionNeededToExtract = BitConverter.ToUInt16(this.entryBuffer, 4);
+                    var generalPurposeBitFlag = (GeneralPurposeBitFlags)BitConverter.ToInt16(this.entryBuffer, 6);
+                    var compressionMethod = (CompressionMethods)BitConverter.ToInt16(this.entryBuffer, 8);
+                    if (IsSupported(compressionMethod, generalPurposeBitFlag))
                     {
-                        var fileName =
+                        var time = BitConverter.ToUInt16(this.entryBuffer, 10);
+                        var date = BitConverter.ToUInt16(this.entryBuffer, 12);
+                        var crc32 = BitConverter.ToUInt32(this.entryBuffer, 14);
+                        var originalSize = BitConverter.ToUInt32(this.entryBuffer, 24);
+
+                        // TODO:
+                        var dateTime = default(DateTime);
+
+                        var encoding =
                             ((generalPurposeBitFlag & GeneralPurposeBitFlags.EntryIsUTF8) == GeneralPurposeBitFlags.EntryIsUTF8) ?
-                            Encoding.UTF8.GetString(fileNameBuffer) :
-                            (this.encoding?.GetString(fileNameBuffer) ?? Encoding.Default.GetString(fileNameBuffer));
+                                Encoding.UTF8 :
+                                this.context.Encoding;
 
+                        string fileName;
+                        if (fileNameLength <= (UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize))
+                        {
+                            fileName = encoding.GetString(
+                                this.entryBuffer, PK0304HeaderSize, fileNameLength);
+                        }
+                        // Rare case: Very long file name.
+                        else
+                        {
+                            var temporaryBuffer = new byte[fileNameLength];
+                            
+                            Array.Copy(
+                                this.entryBuffer, 32,
+                                temporaryBuffer, 0, UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize);
+
+                            this.rangedStream.ResetRange(fileNamePosition);
+                            var fileNameReaminsSize =
+                                fileNameLength - (UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize);
+                            var fileNameRemains = this.rangedStream.Read(
+                                temporaryBuffer,
+                                UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize,
+                                fileNameReaminsSize);
+                            if (fileNameRemains != fileNameReaminsSize)
+                            {
+                                // TODO: EOF
+                            }
+
+                            fileName = encoding.GetString(temporaryBuffer);
+                        }
+                        
                         var isDirectory = IsDirectory(compressionMethod, fileName);
+                        
+                        var entry = new ZippedFileEntry(
+                            fileName,
+                            isDirectory ? CompressionMethods.Directory : compressionMethod,
+                            compressedSize, originalSize,
+                            crc32, dateTime, streamPosition);
 
-                        if (!this.ignoreDirectoryEntry || !isDirectory)
+                        if (this.context.Predicate(entry))
                         {
-                            var op1 = stream.Position;
-                            var np1 = stream.Seek(commentLength, SeekOrigin.Current);
-                            if (np1 != (op1 + commentLength))
+                            ///////////////////////////////////////////////////////////////////////
+                            // Unzip core.
+
+                            switch (entry.CompressionMethod)
                             {
-                                throw new IOException();
+                                case CompressionMethods.Stored:
+                                    this.rangedStream.SetRange(entry.StreamPosition, entry.CompressedSize);
+                                    this.context.OnAction(entry, rangedStream);
+                                    break;
+                                case CompressionMethods.Deflate:
+                                    this.rangedStream.SetRange(entry.StreamPosition, entry.CompressedSize);
+                                    var compressedStream = new DeflateStream(
+                                        this.rangedStream, CompressionMode.Decompress, false);
+                                    this.context.OnAction(entry, compressedStream);
+                                    break;
+                                case CompressionMethods.Directory:
+                                    this.context.OnAction(entry, null);
+                                    break;
                             }
-
-                            var streamPosition = stream.Position;
-
-                            yield return new ZippedFileEntry(
-                                fileName,
-                                isDirectory ? CompressionMethods.Directory : compressionMethod,
-                                compressedSize, originalSize,  // TODO: Deflate64
-                                crc32, dateTime, streamPosition,
-                                factory);
-
-                            var np2 = stream.Seek(compressedSize, SeekOrigin.Current);
-                            if (np2 != (streamPosition + compressedSize))
-                            {
-                                throw new IOException();
-                            }
-
-                            continue;
                         }
-                    }
-
-                    var op = stream.Position;
-                    var np = stream.Seek(commentLength + compressedSize, SeekOrigin.Current);
-                    if (np != (op + commentLength + compressedSize))
-                    {
-                        throw new IOException();
                     }
                 }
             }
         }
 
-        public async ValueTask ParallelForEachAsync(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, ValueTask> action)
+        private sealed class UnzipContext
         {
-            using (var factory = new ReadOnlyRangedStreamFactory(zipFilePath, this.streamBufferSize))
+            private readonly UnzipThreadWorker[] threadWorkers;
+            private readonly Func<ZippedFileEntry, bool> predicate;
+            private readonly Action<ZippedFileEntry, Stream?> action;
+
+            public readonly Encoding Encoding;
+            public volatile UnzipCommonRoleContext? CommonRoleContext;
+            
+            public UnzipContext(
+                string zipFilePath, int parallelCount, Encoding encoding,
+                Func<ZippedFileEntry, bool> predicate,
+                Action<ZippedFileEntry, Stream?> action)
             {
-                var runningTasks = new List<Task>();
-                var exs = default(List<Exception>?);
-
-                async ValueTask WhenAnyAsync()
+                this.Encoding = encoding;
+                this.predicate = predicate;
+                this.action = action;
+                this.CommonRoleContext = new UnzipCommonRoleContext(zipFilePath);
+                
+                this.threadWorkers = new UnzipThreadWorker[parallelCount];
+                for (var index = 0; index < this.threadWorkers.Length; index++)
                 {
-                    Debug.Assert(runningTasks.Count >= 1);
-
-                    try
-                    {
-                        var task = await Task.WhenAny(runningTasks).
-                            ConfigureAwait(false);
-                        runningTasks!.Remove(task);
-
-                        await task.ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (exs == default)
-                        {
-                            exs = new List<Exception>();
-                        }
-                        exs.Add(ex);
-                    }
+                    this.threadWorkers[index] = new UnzipThreadWorker(zipFilePath, this);
                 }
+            }
 
-                await foreach (var entry in this.EnumerateFilesAsync(zipFilePath, factory).
-                    ConfigureAwait(false))
+            public bool Predicate(ZippedFileEntry entry) =>
+                this.predicate(entry);
+            
+            public void OnAction(ZippedFileEntry entry, Stream? compressedStream) =>
+                this.action(entry, compressedStream);
+
+            public void Start()
+            {
+                for (var index = 0; index < this.threadWorkers.Length; index++)
                 {
-                    if (predicate(entry))
-                    {
-                        this.Unzipping?.Invoke(this, new UnzippingEventArgs(entry));
-
-                        var valueTask = action(entry);
-                        if (!valueTask.IsCompletedSuccessfully)
-                        {
-                            runningTasks.Add(valueTask.AsTask());
-                        }
-
-                        if (runningTasks.Count >= this.parallelCount)
-                        {
-                            await WhenAnyAsync().ConfigureAwait(false);
-                        }
-                    }
+                    this.threadWorkers[index].StartConsume();
                 }
+            }
 
-                // Exhausts remains.
-                while (runningTasks.Count >= 1)
+            public void Finish()
+            {
+                for (var index = 0; index < this.threadWorkers.Length; index++)
                 {
-                    await WhenAnyAsync().ConfigureAwait(false);
-                }
-
-                if (exs != default)
-                {
-                    throw new AggregateException(exs);
+                    this.threadWorkers[index].FinishConsume();
                 }
             }
         }
 
-        public async ValueTask<ProcessedResults> UnzipAsync(
+        public async Task<ProcessedResults> UnzipAsync(
             string zipFilePath,
             Func<ZippedFileEntry, bool> predicate,
             Func<ZippedFileEntry, string> targetPathSelector)
@@ -221,47 +299,64 @@ namespace PowerPlayZipper
             var sw = new Stopwatch();
             sw.Start();
 
-            await this.ParallelForEachAsync(
-                zipFilePath,
+            var context = new UnzipContext(
+                zipFilePath, this.parallelCount,
+#if NETCOREAPP1_0 || NETSTANDARD1_4
+                this.encoding ?? Encoding.UTF8,
+#else
+                this.encoding ?? Encoding.Default,
+#endif
                 predicate,
-                async entry =>
+                (entry, compressedStream) =>
                 {
                     var targetPath = targetPathSelector(entry);
                     var directoryPath = Path.GetDirectoryName(targetPath)!;
+                    
+                    this.Unzipping?.Invoke(this, new UnzippingEventArgs(entry, UnzippingStates.Begin, 0));
 
-                    await directoryConstructor.CreateIfNotExistAsync(directoryPath).
-                        ConfigureAwait(false);
+                    directoryConstructor.CreateIfNotExist(directoryPath);
 
-                    if (entry.CompressionMethod != CompressionMethods.Directory)
+                    if (compressedStream != null)
                     {
-                        using (var fs = new FileStream(
-                            targetPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, streamBufferSize, true))
+                        try
                         {
-                            using (var stream = entry.GetDecompressedStream())
+                            using (var fs = new FileStream(
+                                targetPath,
+                                FileMode.Create, FileAccess.ReadWrite, FileShare.None,
+                                this.streamBufferSize))
                             {
-                                await stream.CopyToAsync(fs).ConfigureAwait(false);
+                                compressedStream.CopyTo(fs);
+                                fs.Flush();
                             }
-                            await fs.FlushAsync().ConfigureAwait(false);
-                        }
 
-                        Interlocked.Increment(ref totalFiles);
-                        Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
-                        Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
+                            Interlocked.Increment(ref totalFiles);
+                            Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
+                            Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            throw;
+                        }
                     }
+                    
+                    this.Unzipping?.Invoke(this, new UnzippingEventArgs(entry, UnzippingStates.Done, entry.OriginalSize));
                 });
+            
+            context.Start();
 
             return new ProcessedResults(
                 totalFiles, totalCompressedSize, totalOriginalSize, sw.Elapsed);
         }
 
-        public ValueTask<ProcessedResults> UnzipAsync(
+        public Task<ProcessedResults> UnzipAsync(
             string zipFilePath, string extractToBasePath, Func<ZippedFileEntry, bool> predicate) =>
             UnzipAsync(
                 zipFilePath,
                 predicate,
                 entry => Path.Combine(extractToBasePath, entry.NormalizedFileName));
 
-        public ValueTask<ProcessedResults> UnzipAsync(
+        public Task<ProcessedResults> UnzipAsync(
             string zipFilePath, string extractToBasePath) =>
             UnzipAsync(
                 zipFilePath,

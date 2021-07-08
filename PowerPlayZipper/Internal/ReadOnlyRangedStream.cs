@@ -1,22 +1,18 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace PowerPlayZipper.Internal
 {
     internal sealed class ReadOnlyRangedStream : Stream
     {
-        private readonly ReadOnlyRangedStreamFactory factory;
         private readonly FileStream stream;
         private long initialPosition = 0;
-        private long constrainedSize = 0;
+        private long constrainedSize;
 
-        internal ReadOnlyRangedStream(
-            ReadOnlyRangedStreamFactory factory, string path, int streamBufferSize)
+        internal ReadOnlyRangedStream(string path, int streamBufferSize)
         {
-            this.factory = factory;
-            this.stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, streamBufferSize, true);
+            this.stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, streamBufferSize);
+            this.constrainedSize = this.stream.Length;
         }
 
         public void SetRange(long initialPosition, long constrainedSize)
@@ -28,6 +24,12 @@ namespace PowerPlayZipper.Internal
             }
             this.initialPosition = initialPosition;
             this.constrainedSize = constrainedSize;
+        }
+
+        public void ResetRange(long initialPosition)
+        {
+            this.stream.Position = initialPosition;
+            this.constrainedSize = this.stream.Length;
         }
 
         public override bool CanSeek =>
@@ -56,22 +58,10 @@ namespace PowerPlayZipper.Internal
             return this.stream.Read(array, offset, (int)size);
         }
 
-        public override Task<int> ReadAsync(
-            byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
-        {
-            var size = ((this.Position + count) >= this.constrainedSize) ?
-                (this.constrainedSize - this.Position) :
-                count;
-            return this.stream.ReadAsync(buffer, offset, (int)size, cancellationToken);
-        }
-
         public override long Seek(long offset, SeekOrigin origin) =>
             throw new NotImplementedException();
 
         public override void Flush() =>
-            throw new NotImplementedException();
-
-        public override Task FlushAsync(CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
 
         public override void SetLength(long value) =>
@@ -80,21 +70,17 @@ namespace PowerPlayZipper.Internal
         public override void Write(byte[] buffer, int offset, int count) =>
             throw new NotImplementedException();
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default) =>
-            throw new NotImplementedException();
-
-        public override void Close() =>
-            this.factory.Return(this);
-
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                this.factory.Return(this);
-            }
         }
-
+        
         internal void Destroy() =>
-            this.stream.Close();
+            this.stream.Dispose();
+
+#if !NETCOREAPP1_0 && !NETSTANDARD1_4
+        public override void Close()
+        {
+        }
+#endif
     }
 }
