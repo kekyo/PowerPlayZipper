@@ -11,11 +11,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		PowerPlayZipper.sln.licenseheader = PowerPlayZipper.sln.licenseheader
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ppzip", "ppzip\ppzip.csproj", "{0DAC866D-6DA0-461F-B747-BD41620768C9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerPlayZipper.Benchmark", "PowerPlayZipper.Benchmark\PowerPlayZipper.Benchmark.csproj", "{340F460D-169F-49C0-9029-19AD18AE1416}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PowerPlayZipper.Benchmark", "PowerPlayZipper.Benchmark\PowerPlayZipper.Benchmark.csproj", "{340F460D-169F-49C0-9029-19AD18AE1416}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

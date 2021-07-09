@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
 
 namespace PowerPlayZipper
 {
@@ -13,18 +12,15 @@ namespace PowerPlayZipper
         public readonly uint Crc32;
         public readonly DateTime DateTime;
 
-        internal readonly long StreamPosition;
-
         public string NormalizedFileName =>
             this.FileName.
             Replace('\\', Path.DirectorySeparatorChar).
             Replace('/', Path.DirectorySeparatorChar);
 
-        internal ZippedFileEntry(
+        public ZippedFileEntry(
             string fileName,
             CompressionMethods compressionMethod,
-            long compressedSize, long originalSize,
-            uint crc32, DateTime dateTime, long streamPosition)
+            long compressedSize, long originalSize, uint crc32, DateTime dateTime)
         {
             this.FileName = fileName;
             this.CompressionMethod = compressionMethod;
@@ -32,7 +28,6 @@ namespace PowerPlayZipper
             this.OriginalSize = originalSize;
             this.Crc32 = crc32;
             this.DateTime = dateTime;
-            this.StreamPosition = streamPosition;
         }
 
         public override string ToString() =>

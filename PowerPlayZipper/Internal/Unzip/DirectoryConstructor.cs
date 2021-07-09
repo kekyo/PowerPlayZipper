@@ -2,6 +2,10 @@
 using System.IO;
 using System.Threading;
 
+#if NET35
+using ManualResetEventSlim = System.Threading.ManualResetEvent;
+#endif
+
 namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class DirectoryConstructor
@@ -51,7 +55,11 @@ namespace PowerPlayZipper.Internal.Unzip
                 if (locker != null)
                 {
                     // Will block short time when ran the first time task.
+#if !NET35
                     locker.Wait();
+#else
+                    locker.WaitOne();
+#endif
                 }
             }
         }

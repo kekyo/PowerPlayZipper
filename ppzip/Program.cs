@@ -47,7 +47,7 @@ namespace PowerPlayZipper
                     var unzipper = new Unzipper();
                     if (doVerbose)
                     {
-                        unzipper.Unzipping += (s, e) =>
+                        unzipper.Processing += (s, e) =>
                             Console.WriteLine($"Unzipping: {e.Entry.NormalizedFileName}");
                     }
 
