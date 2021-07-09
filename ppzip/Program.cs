@@ -48,7 +48,13 @@ namespace PowerPlayZipper
                     if (doVerbose)
                     {
                         unzipper.Processing += (s, e) =>
-                            Console.WriteLine($"Unzipping: {e.Entry.NormalizedFileName}");
+                        {
+                            if ((e.Entry.CompressionMethod != CompressionMethods.Directory) &&
+                                (e.State == ProcessingStates.Done))
+                            {
+                                Console.WriteLine($"Unzipped: {e.Entry}");
+                            }
+                        };
                     }
 
                     foreach (var zipFilePath in parsed)

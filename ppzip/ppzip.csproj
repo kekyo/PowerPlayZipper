@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net48;net5.0</TargetFrameworks>
+    <TargetFrameworks>net462;net5.0</TargetFrameworks>
     <RootNamespace>PowerPlayZipper</RootNamespace>
 
     <DebugType>portable</DebugType>
@@ -18,15 +18,15 @@
 
     <Product>PowerPlayZipper</Product>
     <Trademark>PowerPlayZipper</Trademark>
-    <Copyright>Copyright (c) 2019-2021 Kouji Matsui</Copyright>
-    <Description>A Lightning-Fast Zip compression/decompression library.</Description>
+    <Copyright>Copyright (c) 2021 Kouji Matsui</Copyright>
+    <Description>An implementation of Lightning-Fast Zip file compression/decompression library on .NET.</Description>
 
     <Company>Kouji Matsui (@kozy_kekyo, @kekyo2)</Company>
     <Authors>Kouji Matsui (@kozy_kekyo, @kekyo2)</Authors>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/kekyo/PowerPlayZipper.git</PackageProjectUrl>
     <PackageIcon>PowerPlayZipper.100.png</PackageIcon>
-    <PackageTags>zip;unzip;fast;library;easy</PackageTags>
+    <PackageTags>zip;unzip;fast</PackageTags>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
   </PropertyGroup>
 

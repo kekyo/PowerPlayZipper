@@ -51,14 +51,16 @@ public async Task YourZipTaskWithManyFiles(
 
 TODO: Still under construction...
 
-## Many supported platforms
+# Supported platforms
 
-PowerPlayZipper is made with neutralize/independent other libs.
+PowerPlay Zipper is made with neutral/independent.
 
 * .NET 5.0 or higher.
 * .NET Core 3.1, 3.0, 2.1, 2.0 and 1.0.
 * .NET Standard 2.1, 2.0 and 1.3.
-* .NET Framework 4.0, 4.5, 4.6.2 and 4.8.
+  * netstandard13 and netstandard16 refered "System.Threading.Thread 4.0.0."
+* .NET Framework 4.8, 4.6.2, 4.6.1, 4.5, 4.0, 3.5 and 2.0.
+  * net40 refered "Microsoft.Bcl.Async 1.0.168."
 
 TODO: Still under construction...
 
