@@ -9,14 +9,15 @@ namespace PowerPlayZipper
     [SimpleJob(RuntimeMoniker.Net50)]
     [PlainExporter]
     [MarkdownExporterAttribute.GitHub]
-    public class PowerPlayUnzipperBenchmark
+    public class PowerPlayUnzipperBenchmark<TArtifact>
+        where TArtifact : IArtifact, new()
     {
         private UnzipperTestSetup? setup;
 
         [GlobalSetup]
         public Task GlobalSetup()
         {
-            this.setup = new UnzipperTestSetup(Program.ArtifactUrl);
+            this.setup = new UnzipperTestSetup(new TArtifact().ArtifactUrl);
             return this.setup.SetUpAsync().AsTask();
         }
 
