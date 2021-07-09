@@ -2,6 +2,8 @@
 using System.ComponentModel;
 using System.Threading;
 
+using PowerPlayZipper.Compatibility;
+
 namespace PowerPlayZipper.Advanced
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
@@ -26,11 +28,9 @@ namespace PowerPlayZipper.Advanced
             Func<ZippedFileEntry, bool> predicate,
             CancellationToken cancellationToken = default);
 
-
         ProcessedResults Unzip(
             string zipFilePath,
             string extractToBasePath,
             CancellationToken cancellationToken = default);
-
     }
 }

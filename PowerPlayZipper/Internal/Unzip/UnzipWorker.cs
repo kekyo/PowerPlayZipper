@@ -66,7 +66,7 @@ namespace PowerPlayZipper.Internal.Unzip
         private static bool IsDirectory(CompressionMethods cm, string fileName) =>
             (cm == CompressionMethods.Stored) && fileName.EndsWith("/");
 
-#if !NET35 && !NET40
+#if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         private UnzipCommonRoleContext TakeCommonRole()
@@ -82,7 +82,7 @@ namespace PowerPlayZipper.Internal.Unzip
             }
         }
 
-#if !NET35 && !NET40
+#if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
         private void ReleaseCommonRole(ref UnzipCommonRoleContext? commonRoleContext)

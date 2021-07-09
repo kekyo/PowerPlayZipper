@@ -73,14 +73,14 @@ namespace PowerPlayZipper.Internal.Unzip
         protected override void Dispose(bool disposing)
         {
         }
-        
-        internal void Destroy() =>
-            this.stream.Dispose();
 
-#if !NETCOREAPP1_0 && !NETSTANDARD1_3
+#if !NETCOREAPP1_0 && !NETSTANDARD1_3 && !NETSTANDARD1_6
         public override void Close()
         {
         }
 #endif
+
+        internal void Destroy() =>
+            this.stream.Dispose();
     }
 }

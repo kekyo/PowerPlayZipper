@@ -5,17 +5,17 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-#if !NET35
+#if !NET20 && !NET35
 using System.Threading.Tasks;
 #endif
 
+using PowerPlayZipper.Compatibility;
 using PowerPlayZipper.Advanced;
-using PowerPlayZipper.Internal;
 using PowerPlayZipper.Internal.Unzip;
 
 namespace PowerPlayZipper
 {
-    public sealed class Unzipper : ISynchronousUnzipper, IZipperProcessing
+    public sealed class Unzipper : IUnzipper, ISynchronousUnzipper
     {
         private const int DefaultStreamBufferSize = 131072;
         private const int NotifyCount = 100;
@@ -135,7 +135,7 @@ namespace PowerPlayZipper
             context.Start();
         }
 
-#if !NET35
+#if !NET20 && !NET35
         ////////////////////////////////////////////////////////////////////////
         // Asynchronous interface
 
@@ -239,7 +239,7 @@ namespace PowerPlayZipper
             }
         }
 
-#if !NET35
+#if !NET20 && !NET35
         /// <summary>
         /// </summary>
         /// <param name="zipFilePath"></param>

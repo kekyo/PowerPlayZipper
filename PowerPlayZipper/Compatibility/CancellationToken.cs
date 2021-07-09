@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace PowerPlayZipper.Advanced
+namespace PowerPlayZipper.Compatibility
 {
-#if NET35
+#if NET20 || NET35
     public struct CancellationToken
     {
         public void Register(Action callback)

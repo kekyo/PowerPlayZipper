@@ -17,5 +17,4 @@ namespace PowerPlayZipper.Internal.Unzip
         public void Close() =>
             this.EntryStream.Dispose();
     }
-
 }

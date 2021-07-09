@@ -5,6 +5,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
+using PowerPlayZipper.Compatibility;
+
 namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class UnzipContext

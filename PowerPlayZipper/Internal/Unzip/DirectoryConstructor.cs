@@ -2,7 +2,9 @@
 using System.IO;
 using System.Threading;
 
-#if NET35
+using PowerPlayZipper.Compatibility;
+
+#if NET20 || NET35
 using ManualResetEventSlim = System.Threading.ManualResetEvent;
 #endif
 
@@ -21,7 +23,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 if (!this.processings.TryGetValue(directoryPath, out locker))
                 {
                     firstTime = true;
-                    locker = new ManualResetEventSlim(false);
+                    locker = IndependentFactory.CreateManualResetEvent();
                     this.processings.Add(directoryPath, locker);
                 }
             }
@@ -55,11 +57,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 if (locker != null)
                 {
                     // Will block short time when ran the first time task.
-#if !NET35
                     locker.Wait();
-#else
-                    locker.WaitOne();
-#endif
                 }
             }
         }

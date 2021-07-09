@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
-namespace PowerPlayZipper.Internal
+namespace PowerPlayZipper.Compatibility
 {
     internal static class IndependentFactory
     {
-#if NETCOREAPP1_0 || NETSTANDARD1_3
+#if NETCOREAPP1_0 || NETSTANDARD1_3 || NETSTANDARD1_6
         public static Encoding GetDefaultEncoding() =>
             Encoding.UTF8;
 #else
@@ -15,7 +15,7 @@ namespace PowerPlayZipper.Internal
             Encoding.Default;
 #endif
 
-#if NET35
+#if NET20 || NET35
         public static ManualResetEvent CreateManualResetEvent() =>
             new ManualResetEvent(false);
 
