@@ -101,7 +101,7 @@ SharpZipLib 1.3.2 FastZip.ExtractZip():
 
 # Supported platforms
 
-PowerPlay Zipper is made with neutral/independent reference.
+PowerPlay Zipper is made with neutral/independent any reference. See [NuGet dependency list.](https://www.nuget.org/packages/PowerPlayZipper)
 
 * .NET 5.0 or higher.
 * .NET Core 3.1, 3.0, 2.1, 2.0 and 1.0.
@@ -110,10 +110,17 @@ PowerPlay Zipper is made with neutral/independent reference.
 * .NET Framework 4.8, 4.6.2, 4.6.1, 4.5, 4.0, 3.5 and 2.0.
   * net40 refered "Microsoft.Bcl.Async 1.0.168."
 
-TODO: Still under construction...
+# Limitation
+
+* Will not support these zip file features:
+  * Only supported `deflate` compression algorithm, will not support any others.
+  * Any encryption and decryption feature.
+  * Continuous streaming unzip. PowerPlayZipper depends seekable file accessing.
 
 # License
 
 Under Apache v2.
 
 # Histroy
+
+* 0.0.12: First NuGet package released.
