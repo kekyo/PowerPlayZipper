@@ -73,13 +73,13 @@ UnrollFactor=1
 
 ## dotnet/docs repo
 
-PowerPlayZipper 0.0.12 Unzipper:
+PowerPlayZipper 0.0.12 `Unzipper`:
 
 | Method |    Mean |   Error |  StdDev |
 |------- |--------:|--------:|--------:|
 |    Run | 10.11 s | 0.332 s | 0.908 s |
 
-SharpZipLib 1.3.2 FastZip.ExtractZip():
+SharpZipLib 1.3.2 `FastZip.ExtractZip()`:
 
 | Method |    Mean |   Error |  StdDev |
 |------- |--------:|--------:|--------:|
@@ -87,13 +87,13 @@ SharpZipLib 1.3.2 FastZip.ExtractZip():
 
 ## Mixed Reality Toolkit repo
 
-PowerPlayZipper 0.0.12 Unzipper:
+PowerPlayZipper 0.0.12 `Unzipper`:
 
 | Method |    Mean |    Error |   StdDev |  Median |
 |------- |--------:|---------:|---------:|--------:|
 |    Run | 1.124 s | 0.0852 s | 0.2274 s | 1.039 s |
 
-SharpZipLib 1.3.2 FastZip.ExtractZip():
+SharpZipLib 1.3.2 `FastZip.ExtractZip()`:
 
 | Method |    Mean |    Error |   StdDev |
 |------- |--------:|---------:|---------:|
@@ -106,9 +106,9 @@ PowerPlay Zipper is made with neutral/independent any reference. See [NuGet depe
 * .NET 5.0 or higher.
 * .NET Core 3.1, 3.0, 2.1, 2.0 and 1.0.
 * .NET Standard 2.1, 2.0 and 1.3.
-  * netstandard13 and netstandard16 refered "System.Threading.Thread 4.0.0."
+  * `netstandard13` and `netstandard16` referred `System.Threading.Thread 4.0.0`.
 * .NET Framework 4.8, 4.6.2, 4.6.1, 4.5, 4.0, 3.5 and 2.0.
-  * net40 refered "Microsoft.Bcl.Async 1.0.168."
+  * `net40` referred `Microsoft.Bcl.Async 1.0.168`.
 
 # Limitation
 
@@ -116,6 +116,7 @@ PowerPlay Zipper is made with neutral/independent any reference. See [NuGet depe
   * Only supported `deflate` compression algorithm, will not support any others.
   * Any encryption and decryption feature.
   * Continuous streaming unzip. PowerPlayZipper depends seekable file accessing.
+  * Supported only synchronized interface between `net20` and `net35` platforms.
 
 # License
 
