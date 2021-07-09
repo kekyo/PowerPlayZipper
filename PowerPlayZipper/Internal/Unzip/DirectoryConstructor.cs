@@ -2,7 +2,7 @@
 using System.IO;
 using System.Threading;
 
-namespace PowerPlayZipper.Internal
+namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class DirectoryConstructor
     {

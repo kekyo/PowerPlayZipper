@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace PowerPlayZipper.Internal
+namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class ReadOnlyRangedStream : Stream
     {
