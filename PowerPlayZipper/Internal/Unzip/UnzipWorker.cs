@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+
+using PowerPlayZipper.Compatibility;
 
 namespace PowerPlayZipper.Internal.Unzip
 {
@@ -16,7 +19,7 @@ namespace PowerPlayZipper.Internal.Unzip
             EntryIsUTF8 = 0x0800,  // bit11
         }
 
-        private const int PK0304HeaderSize = 32;
+        private const int PK0304HeaderSize = 30;
 
         private readonly UnzipContext context;
         private readonly ReadOnlyRangedStream rangedStream;
@@ -50,9 +53,6 @@ namespace PowerPlayZipper.Internal.Unzip
 
         public void StartConsume() =>
             this.thread.Start();
-
-        public void WaitForFinishConsume() =>
-            this.thread.Join();
 
         private static bool IsSupported(CompressionMethods cm, GeneralPurposeBitFlags gpbf)
         {
@@ -120,7 +120,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     break;
                 }
 
-                var signature = BitConverter.ToUInt32(this.entryBuffer, 0);
+                var signature = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 0);
                 if (signature != 0x04034b50) // PK0304
                 {
                     // Start finishing by EOF. (Has unknown header)
@@ -129,7 +129,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     break;
                 }
 
-                var fileNameLength = BitConverter.ToUInt16(this.entryBuffer, 28);
+                var fileNameLength = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 26);
                 if (fileNameLength == 0)
                 {
                     // Raise fatal header error.
@@ -139,8 +139,8 @@ namespace PowerPlayZipper.Internal.Unzip
                     break;
                 }
 
-                var compressedSize = BitConverter.ToUInt32(this.entryBuffer, 20);
-                var commentLength = BitConverter.ToUInt16(this.entryBuffer, 30);
+                var compressedSize = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 18);
+                var commentLength = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 28);
 
                 // Update next header position.
                 var fileNamePosition = commonRoleContext.HeaderPosition + PK0304HeaderSize;
@@ -150,21 +150,21 @@ namespace PowerPlayZipper.Internal.Unzip
                 // Enqueue next header.
                 this.ReleaseCommonRole(ref commonRoleContext);
 
+                Debug.Assert(commonRoleContext == null);
+
                 ///////////////////////////////////////////////////////////////////////
                 // Worker thread role.
 
                 //var versionNeededToExtract = BitConverter.ToUInt16(this.entryBuffer, 4);
-                var generalPurposeBitFlag = (GeneralPurposeBitFlags)BitConverter.ToInt16(this.entryBuffer, 6);
-                var compressionMethod = (CompressionMethods)BitConverter.ToInt16(this.entryBuffer, 8);
+                var generalPurposeBitFlag = (GeneralPurposeBitFlags)BinaryPrimitives.ReadInt16LittleEndian(this.entryBuffer, 6);
+                var compressionMethod = (CompressionMethods)BinaryPrimitives.ReadInt16LittleEndian(this.entryBuffer, 8);
+
                 if (IsSupported(compressionMethod, generalPurposeBitFlag))
                 {
-                    var time = BitConverter.ToUInt16(this.entryBuffer, 10);
-                    var date = BitConverter.ToUInt16(this.entryBuffer, 12);
-                    var crc32 = BitConverter.ToUInt32(this.entryBuffer, 14);
-                    var originalSize = BitConverter.ToUInt32(this.entryBuffer, 24);
-
-                    // TODO:
-                    var dateTime = default(DateTime);
+                    var time = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 10);
+                    var date = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 12);
+                    var crc32 = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 14);
+                    var originalSize = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 22);
 
                     var encoding =
                         ((generalPurposeBitFlag & GeneralPurposeBitFlags.EntryIsUTF8) == GeneralPurposeBitFlags.EntryIsUTF8) ?
@@ -224,6 +224,9 @@ namespace PowerPlayZipper.Internal.Unzip
                     var isDirectory = IsDirectory(compressionMethod, fileName);
                     if (!this.context.IgnoreDirectoryEntry || !isDirectory)
                     {
+                        // TODO:
+                        var dateTime = default(DateTime);
+
                         var entry = new ZippedFileEntry(
                             fileName,
                             isDirectory ? CompressionMethods.Directory : compressionMethod,

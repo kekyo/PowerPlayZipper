@@ -2,13 +2,12 @@
 using System.ComponentModel;
 using System.Threading;
 
-using PowerPlayZipper.Compatibility;
-
 namespace PowerPlayZipper.Advanced
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public interface ISynchronousUnzipper
+    public interface ISynchronousUnzipper : IUnzipper
     {
+#if !NET20 && !NET35
         /// <summary>
         /// </summary>
         /// <param name="zipFilePath"></param>
@@ -32,5 +31,6 @@ namespace PowerPlayZipper.Advanced
             string zipFilePath,
             string extractToBasePath,
             CancellationToken cancellationToken = default);
+#endif
     }
 }

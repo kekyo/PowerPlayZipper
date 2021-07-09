@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Threading;
 
 #if !NET20 && !NET35
@@ -11,6 +12,14 @@ namespace PowerPlayZipper
 {
     public interface IUnzipper : IZipperProcessing
     {
+        bool IgnoreDirectoryEntry { get; }
+
+        Encoding DefaultFileNameEncoding { get; }
+
+        int ParallelCount { get; }
+
+        int StreamBufferSize { get; }
+
 #if !NET20 && !NET35
         /// <summary>
         /// </summary>

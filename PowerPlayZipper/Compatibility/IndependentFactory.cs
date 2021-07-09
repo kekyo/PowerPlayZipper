@@ -8,10 +8,10 @@ namespace PowerPlayZipper.Compatibility
     internal static class IndependentFactory
     {
 #if NETCOREAPP1_0 || NETSTANDARD1_3 || NETSTANDARD1_6
-        public static Encoding GetDefaultEncoding() =>
+        public static Encoding GetSystemDefaultEncoding() =>
             Encoding.UTF8;
 #else
-        public static Encoding GetDefaultEncoding() =>
+        public static Encoding GetSystemDefaultEncoding() =>
             Encoding.Default;
 #endif
 

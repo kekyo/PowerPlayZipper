@@ -15,19 +15,36 @@ using PowerPlayZipper.Internal.Unzip;
 
 namespace PowerPlayZipper
 {
+    public enum FileNameEncodings
+    {
+        UTF8,
+        SystemDefault
+    }
+
     public sealed class Unzipper : IUnzipper, ISynchronousUnzipper
     {
         private const int DefaultStreamBufferSize = 131072;
         private const int NotifyCount = 100;
 
+        public Unzipper() =>
+            this.DefaultFileNameEncoding = Encoding.UTF8;
+
+        public Unzipper(FileNameEncodings fileNameEncoding) =>
+            this.DefaultFileNameEncoding =
+                fileNameEncoding == FileNameEncodings.SystemDefault ?
+                    IndependentFactory.GetSystemDefaultEncoding() :
+                    Encoding.UTF8;
+
         ////////////////////////////////////////////////////////////////////////
         // Properties
 
         public bool IgnoreDirectoryEntry { get; set; }
-        public Encoding DefaultFileNameEncoding { get; set; } =
-            IndependentFactory.GetDefaultEncoding();
+
+        public Encoding DefaultFileNameEncoding { get; set; }
+            
         public int ParallelCount { get; set; } =
             Environment.ProcessorCount;
+
         public int StreamBufferSize { get; set; } =
             DefaultStreamBufferSize;
 
@@ -55,7 +72,7 @@ namespace PowerPlayZipper
                 zipFilePath,
                 this.IgnoreDirectoryEntry,
                 this.ParallelCount,
-                this.DefaultFileNameEncoding ?? IndependentFactory.GetDefaultEncoding(),
+                this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
                 this.StreamBufferSize,
                 predicate,
                 (entry, compressedStream, streamBuffer) =>

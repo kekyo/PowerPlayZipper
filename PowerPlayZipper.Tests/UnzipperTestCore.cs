@@ -13,7 +13,6 @@ namespace PowerPlayZipper
             UnzipperTestSetup setup, string basePath)
         {
             var unzipper = new Unzipper();
-            unzipper.ParallelCount = 1;
             await unzipper.UnzipAsync(setup.ZipFilePath, basePath);
         }
 
