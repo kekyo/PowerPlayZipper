@@ -1,14 +1,11 @@
 ﻿using System;
 
+using PowerPlayZipper.Internal;
+
 namespace PowerPlayZipper
 {
-    public readonly struct ProcessedResults
+    public sealed class ProcessedResults
     {
-        public readonly int TotalFiles;
-        public readonly long TotalCompressedSize;
-        public readonly long TotalOriginalSize;
-        public readonly TimeSpan Elapsed;
-
         public ProcessedResults(
             int totalFiles, long totalCompressedSize, long totalOriginalSize, TimeSpan elapsed)
         {
@@ -18,7 +15,12 @@ namespace PowerPlayZipper
             this.Elapsed = elapsed;
         }
 
+        public int TotalFiles { get; }
+        public long TotalCompressedSize { get; }
+        public long TotalOriginalSize { get; }
+        public TimeSpan Elapsed { get; }
+
         public override string ToString() =>
-            $"Files={this.TotalFiles}, Size=[{this.TotalCompressedSize}B,{this.TotalOriginalSize}B], Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100.0:F5}%, Elapsed={this.Elapsed}, Rate=[{this.TotalCompressedSize/this.Elapsed.TotalSeconds:F5}B/sec,{this.TotalOriginalSize/this.Elapsed.TotalSeconds:F5}B/sec]";
+            $"Files={this.TotalFiles}, CompressedSize={this.TotalCompressedSize.ToByteSize()}, OriginalSize={this.TotalOriginalSize.ToByteSize()}, Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100:F2}%, Elapsed={this.Elapsed}, CompressedDataRate={(this.TotalCompressedSize/this.Elapsed.TotalSeconds).ToByteSize()}/sec, OriginalDataRate={(this.TotalOriginalSize/this.Elapsed.TotalSeconds).ToByteSize()}/sec";
     }
 }

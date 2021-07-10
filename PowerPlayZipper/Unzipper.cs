@@ -15,10 +15,10 @@ using PowerPlayZipper.Internal.Unzip;
 
 namespace PowerPlayZipper
 {
-    public enum FileNameEncodings
+    public enum DefaultFileNameEncodings
     {
-        UTF8,
-        SystemDefault
+        AlwaysUTF8,
+        SystemDefaultIfApplicable
     }
 
     public sealed class Unzipper : IUnzipper, ISynchronousUnzipper
@@ -29,9 +29,9 @@ namespace PowerPlayZipper
         public Unzipper() =>
             this.DefaultFileNameEncoding = Encoding.UTF8;
 
-        public Unzipper(FileNameEncodings fileNameEncoding) =>
+        public Unzipper(DefaultFileNameEncodings fileNameEncoding) =>
             this.DefaultFileNameEncoding =
-                fileNameEncoding == FileNameEncodings.SystemDefault ?
+                fileNameEncoding == DefaultFileNameEncodings.SystemDefaultIfApplicable ?
                     IndependentFactory.GetSystemDefaultEncoding() :
                     Encoding.UTF8;
 
@@ -42,7 +42,7 @@ namespace PowerPlayZipper
 
         public Encoding DefaultFileNameEncoding { get; set; }
             
-        public int ParallelCount { get; set; } =
+        public int MaxParallelCount { get; set; } =
             Environment.ProcessorCount;
 
         public int StreamBufferSize { get; set; } =
@@ -57,7 +57,8 @@ namespace PowerPlayZipper
             string zipFilePath,
             Func<ZippedFileEntry, bool> predicate,
             Func<ZippedFileEntry, string> targetPathSelector,
-            Action<object> finished,
+            Action<ProcessedResults> succeeded,
+            Action<List<Exception>> failed,
             CancellationToken cancellationToken)
         {
             var directoryConstructor = new DirectoryConstructor();
@@ -71,7 +72,7 @@ namespace PowerPlayZipper
             var context = new UnzipContext(
                 zipFilePath,
                 this.IgnoreDirectoryEntry,
-                this.ParallelCount,
+                (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
                 this.StreamBufferSize,
                 predicate,
@@ -138,17 +139,16 @@ namespace PowerPlayZipper
                 {
                     if (exceptions.Count >= 1)
                     {
-                        finished(exceptions);
+                        failed(exceptions);
                     }
                     else
                     {
-                        finished(new ProcessedResults(
+                        succeeded(new ProcessedResults(
                             totalFiles, totalCompressedSize, totalOriginalSize, sw.Elapsed));
                     }
                 });
 
             cancellationToken.Register(context.RequestAbort);
-
             context.Start();
         }
 
@@ -177,17 +177,8 @@ namespace PowerPlayZipper
                 zipFilePath,
                 predicate,
                 targetPathSelector,
-                result =>
-                {
-                    if (result is List<Exception> exs)
-                    {
-                        tcs.SetException(new AggregateException(exs));
-                    }
-                    else
-                    {
-                        tcs.SetResult((ProcessedResults)result);
-                    }
-                },
+                results => tcs.SetResult(results),
+                exceptions => tcs.SetException(exceptions),
                 cancellationToken);
 
             return tcs.Task;
@@ -228,7 +219,8 @@ namespace PowerPlayZipper
 
             using (var ev = IndependentFactory.CreateManualResetEvent())
             {
-                object? result = null;
+                ProcessedResults? results = null;
+                List<Exception>? exceptions = null;
 
                 this.UnzipCore(
                     zipFilePath,
@@ -236,22 +228,27 @@ namespace PowerPlayZipper
                     targetPathSelector,
                     r =>
                     {
-                        result = r;
+                        results = r;
+                        ev.Set();
+                    },
+                    exs =>
+                    {
+                        exceptions = exs;
                         ev.Set();
                     },
                     cancellationToken);
 
                 ev.Wait();
 
-                Debug.Assert(result != null);
+                Debug.Assert(results != null);
 
-                if (result is List<Exception> exceptions)
+                if (exceptions is { })
                 {
                     throw IndependentFactory.GetAggregateException(exceptions);
                 }
                 else
                 {
-                    return (ProcessedResults)result!;
+                    return (ProcessedResults)results!;
                 }
             }
         }

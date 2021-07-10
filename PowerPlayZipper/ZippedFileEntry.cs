@@ -1,22 +1,12 @@
 ﻿using System;
 using System.IO;
 
+using PowerPlayZipper.Internal;
+
 namespace PowerPlayZipper
 {
     public sealed class ZippedFileEntry
     {
-        public readonly string FileName;
-        public readonly CompressionMethods CompressionMethod;
-        public readonly long CompressedSize;
-        public readonly long OriginalSize;
-        public readonly uint Crc32;
-        public readonly DateTime DateTime;
-
-        public string NormalizedFileName =>
-            this.FileName.
-            Replace('\\', Path.DirectorySeparatorChar).
-            Replace('/', Path.DirectorySeparatorChar);
-
         public ZippedFileEntry(
             string fileName,
             CompressionMethods compressionMethod,
@@ -30,7 +20,19 @@ namespace PowerPlayZipper
             this.DateTime = dateTime;
         }
 
+        public string FileName { get; }
+        public CompressionMethods CompressionMethod { get; }
+        public long CompressedSize { get; }
+        public long OriginalSize { get; }
+        public uint Crc32 { get; }
+        public DateTime DateTime { get; }
+
+        public string NormalizedFileName =>
+            this.FileName.
+            Replace('\\', Path.DirectorySeparatorChar).
+            Replace('/', Path.DirectorySeparatorChar);
+
         public override string ToString() =>
-            $"{this.NormalizedFileName}: Size=[{this.CompressedSize}/{this.OriginalSize}], Crc32=0x{this.Crc32:x8}";
+            $"{this.NormalizedFileName}: CompressedSize={this.CompressedSize.ToByteSize()}, OriginalSize={this.OriginalSize.ToByteSize()}, Crc32=0x{this.Crc32:x8}";
     }
 }

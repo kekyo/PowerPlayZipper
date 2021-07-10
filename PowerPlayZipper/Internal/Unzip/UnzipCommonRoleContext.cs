@@ -13,8 +13,5 @@ namespace PowerPlayZipper.Internal.Unzip
         public UnzipCommonRoleContext(string zipFilePath) =>
             this.EntryStream = new FileStream(
                 zipFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, EntryBufferSize);
-
-        public void Close() =>
-            this.EntryStream.Dispose();
     }
 }

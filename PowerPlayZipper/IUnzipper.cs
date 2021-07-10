@@ -16,7 +16,7 @@ namespace PowerPlayZipper
 
         Encoding DefaultFileNameEncoding { get; }
 
-        int ParallelCount { get; }
+        int MaxParallelCount { get; }
 
         int StreamBufferSize { get; }
 
