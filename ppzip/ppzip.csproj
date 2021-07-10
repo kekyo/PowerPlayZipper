@@ -29,6 +29,7 @@
     <PackageTags>zip;unzip;fast</PackageTags>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\Images\PowerPlayZipper.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net5.0'">
@@ -51,6 +52,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Images\PowerPlayZipper.ico" Link="PowerPlayZipper.ico" />
   </ItemGroup>
 
   <Target Name="ILRepack" AfterTargets="Build" Condition="('$(TargetFramework)' == 'net462') AND ('$(MSBuildRuntimeType)' == 'Full')">
