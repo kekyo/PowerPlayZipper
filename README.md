@@ -55,8 +55,8 @@ public async Task YourZipTaskWithManyFiles(
 
 Using these zip files on Benchmark .NET:
 
-* [GitHub zipped dotnet/docs repo (Contains many standard size text files)](https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip)
-* [GitHub zipped Mixed Reality Toolkit repo (Contains large files)](https://github.com/microsoft/MixedRealityToolkit/archive/b63b40b9a4bd4e350f35986d450dd5393c6e58a0.zip)
+* [GitHub zipped dotnet/docs repo ~300MB (Contains many standard size text files)](https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip)
+* [GitHub zipped Mixed Reality Toolkit repo ~160MB (Contains large files)](https://github.com/microsoft/MixedRealityToolkit/archive/b63b40b9a4bd4e350f35986d450dd5393c6e58a0.zip)
 
 ``` ini
 
