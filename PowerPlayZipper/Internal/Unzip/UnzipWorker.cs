@@ -45,6 +45,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 }
                 finally
                 {
+                    this.rangedStream.Dispose();
                     this.context.OnFinished();
                 }
             });

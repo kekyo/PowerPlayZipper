@@ -11,7 +11,7 @@ namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class UnzipContext
     {
-        private readonly UnzipWorker[] workers;
+        private readonly UnzipWorker?[] workers;
         private readonly Func<ZippedFileEntry, bool> predicate;
         private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
         private readonly List<Exception> caughtExceptions = new List<Exception>();
@@ -97,9 +97,19 @@ namespace PowerPlayZipper.Internal.Unzip
             Debug.Assert(runningThreads >= 0);
 
             // Last one.
-            if (runningThreads == 0)
+            if (runningThreads <= 0)
             {
                 this.finished(this.caughtExceptions);
+
+                // Make GC safer.
+                for (var index = 0; index < this.workers.Length; index++)
+                {
+                    this.workers[index] = null!;
+                }
+
+                // Close entry stream.
+                Debug.Assert(this.CommonRoleContext != null);
+                this.CommonRoleContext?.EntryStream.Dispose();
             }
         }
 
@@ -110,7 +120,8 @@ namespace PowerPlayZipper.Internal.Unzip
             this.runningThreads = this.workers.Length;
             for (var index = 0; index < this.workers.Length; index++)
             {
-                this.workers[index].StartConsume();
+                Debug.Assert(this.workers[index] != null);
+                this.workers[index]!.StartConsume();
             }
         }
 
