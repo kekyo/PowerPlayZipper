@@ -16,7 +16,7 @@ PowerPlay Zipper is an implementation of `Lightning-Fast` Zip file compression/d
 
 * DOUBLE to QUAD faster unzipping execution than `SharpZipLib.FastZip`.
 
-Yes, we can easy replacing PowerPlay Zipper from another zip manipulation library.
+Yes, we can easy replace PowerPlay Zipper from another zip manipulation library.
 
 ## Simpler unzip (Decompression)
 
@@ -52,11 +52,21 @@ public async Task YourZipTaskWithManyFiles(
 }
 ```
 
-## .NET CLI Tool supported
+## .NET CLI tool
 
 ```sh
-$ dotnet tool install --global ppzip
+# Install ppzip command from NuGet.
+> dotnet tool install --global ppzip
 
+# Unzip a zip file.
+> ppzip -u MixedRealityToolkit-master.zip
+MixedRealityToolkit-master.zip: Unzipping ... Done.
+  Elapsed    : 00:00:00.9144408
+  Files      : 2491 [2724.07files/sec]
+  Compressed : 164.35MiB [179.73MiB/sec]
+  Expanded   : 261.63MiB [286.11MiB/sec]
+  Ratio      : 159.19%
+  Parallel   : 36 [36]
 ```
 
 # Unzipping performance
@@ -132,4 +142,6 @@ Under Apache v2.
 
 # Histroy
 
+* 0.0.29: Added .NET CLI tool package named `ppzip`.
+* 0.0.27: Minor bug fixed.
 * 0.0.12: First NuGet package released.
