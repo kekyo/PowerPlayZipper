@@ -1,17 +1,100 @@
-﻿using Mono.Options;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+
+using Mono.Options;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
 {
     public static class Program
     {
+        private static async Task ExecuteUnzipAsync(
+            string unzipTargetBasePath,
+            int? maxParallelCount,
+            bool doVerbose,
+            IReadOnlyList<string> parsed)
+        {
+            var unzipper = new Unzipper();
+            if (maxParallelCount is { } mpc)
+            {
+                unzipper.MaxParallelCount = mpc;
+            }
+
+            if (doVerbose)
+            {
+                unzipper.Processing += (s, e) =>
+                {
+                    if ((e.Entry.CompressionMethod != CompressionMethods.Directory) &&
+                        (e.State == ProcessingStates.Done))
+                    {
+                        Console.WriteLine($"  {e.Entry.CompressionMethod switch { CompressionMethods.Deflate => "Inflated", _ => "Stored  " }} : \"{e.Entry.NormalizedFileName}\" [{e.Entry.OriginalSize.ToBinaryPrefixString()}]");
+                    }
+                };
+            }
+
+            for (var index = 0; index < parsed.Count; index++)
+            {
+                var zipFilePath = parsed[index];
+
+                if (doVerbose)
+                {
+                    Console.WriteLine($"Unzipping: \"{zipFilePath}\" ...");
+                    Console.WriteLine();
+                }
+                else
+                {
+                    Console.Write($"{zipFilePath}: Unzipping ...");
+                }
+
+                var result = await unzipper.
+                    UnzipAsync(zipFilePath, unzipTargetBasePath).
+                    ConfigureAwait(false);
+
+                if (doVerbose)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine($"Unzipped: \"{zipFilePath}\"");
+                }
+                else
+                {
+                    Console.WriteLine(" Done.");
+                }
+
+                Console.WriteLine($"  Elapsed    : {result.Elapsed}");
+                Console.WriteLine($"  Files      : {result.TotalFiles} [{(double)result.TotalFiles / result.Elapsed.TotalSeconds:F2}files/sec]");
+                Console.WriteLine($"  Compressed : {result.TotalCompressedSize.ToBinaryPrefixString()} [{(result.TotalCompressedSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
+                Console.WriteLine($"  Expanded   : {result.TotalOriginalSize.ToBinaryPrefixString()} [{(result.TotalOriginalSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
+                Console.WriteLine($"  Ratio      : {(double)result.TotalOriginalSize / result.TotalCompressedSize * 100:F2}%");
+
+                if ((index + 1) < parsed.Count)
+                {
+                    Console.WriteLine();
+                }
+            }
+        }
+
+        private static void WriteUsage(OptionSet options)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyInformationalVersion}]");
+            Console.WriteLine("https://github.com/kekyo/PowerPlayZipper");
+            Console.WriteLine("Copyright (c) 2021 Kouji Matsui");
+            Console.WriteLine("License under Apache v2");
+            Console.WriteLine();
+            Console.WriteLine("usage: ppzip -u [options] <zipFile> [<zipFile> ...]");
+            Console.WriteLine("usage: ppzip -z [options] <zipFile> [<file> ...]");
+
+            options.WriteOptionDescriptions(Console.Out);
+        }
+
         public static async Task<int> Main(string[] args)
         {
-            var doZip = false;
+            bool? doZip = null;
             var unzipTargetBasePath = Directory.GetCurrentDirectory();
+            int? maxParallelCount = null;
             var doVerbose = false;
             var doHelp = false;
 
@@ -19,7 +102,8 @@ namespace PowerPlayZipper
             {
                 { "u|unzip", "Unzip target files", v => doZip = false },
                 { "z|zip", "Zip target files", v => doZip = true },
-                { "o", "Unzipped output directory path", v => unzipTargetBasePath = v },
+                { "o=", "Unzipped output directory path", v => unzipTargetBasePath = v },
+                { "p|parallel", "Maximum parallel count", (int v) => maxParallelCount = v },
                 { "v|verbose", "Verbose processing", v => doVerbose = true },
                 { "h|help", "Show this help", v => doHelp = true },
             };
@@ -28,43 +112,17 @@ namespace PowerPlayZipper
             {
                 var parsed = options.Parse(args);
 
-                if (doHelp || (parsed.Count == 0))
+                if (doHelp || (doZip == null) || (maxParallelCount < 1) || (parsed.Count == 0))
                 {
-                    Console.WriteLine();
-                    Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyInformationalVersion}]");
-                    Console.WriteLine("https://github.com/kekyo/PowerPlayZipper");
-                    Console.WriteLine("Copyright (c) 2021 Kouji Matsui");
-                    Console.WriteLine("License under Apache v2");
-                    Console.WriteLine();
-                    Console.WriteLine("usage: ppzip -u [options] <zipFile> [<zipFile> ...]");
-                    Console.WriteLine("usage: ppzip -z [options] <zipFile> [<file> ...]");
-                    options.WriteOptionDescriptions(Console.Out);
+                    WriteUsage(options);
                     return 1;
                 }
 
-                if (!doZip)
+                if (doZip == false)
                 {
-                    var unzipper = new Unzipper();
-                    if (doVerbose)
-                    {
-                        unzipper.Processing += (s, e) =>
-                        {
-                            if ((e.Entry.CompressionMethod != CompressionMethods.Directory) &&
-                                (e.State == ProcessingStates.Done))
-                            {
-                                Console.WriteLine($"Unzipped: {e.Entry}");
-                            }
-                        };
-                    }
-
-                    foreach (var zipFilePath in parsed)
-                    {
-                        var result = await unzipper.
-                            UnzipAsync(zipFilePath, unzipTargetBasePath).
-                            ConfigureAwait(false);
-
-                        Console.WriteLine($"{zipFilePath}: {result}");
-                    }
+                    await ExecuteUnzipAsync(
+                        unzipTargetBasePath, maxParallelCount, doVerbose, parsed).
+                        ConfigureAwait(false);
                 }
                 else
                 {
@@ -72,6 +130,11 @@ namespace PowerPlayZipper
                 }
 
                 return 0;
+            }
+            catch (OptionException)
+            {
+                WriteUsage(options);
+                return 1;
             }
             catch (Exception ex)
             {

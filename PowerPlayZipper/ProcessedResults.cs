@@ -1,6 +1,6 @@
 ﻿using System;
 
-using PowerPlayZipper.Internal;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
 {
@@ -21,6 +21,6 @@ namespace PowerPlayZipper
         public TimeSpan Elapsed { get; }
 
         public override string ToString() =>
-            $"Files={this.TotalFiles}, CompressedSize={this.TotalCompressedSize.ToByteSize()}, OriginalSize={this.TotalOriginalSize.ToByteSize()}, Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100:F2}%, Elapsed={this.Elapsed}, CompressedDataRate={(this.TotalCompressedSize/this.Elapsed.TotalSeconds).ToByteSize()}/sec, OriginalDataRate={(this.TotalOriginalSize/this.Elapsed.TotalSeconds).ToByteSize()}/sec";
+            $"Files={this.TotalFiles}, CompressedSize={this.TotalCompressedSize.ToBinaryPrefixString()}, OriginalSize={this.TotalOriginalSize.ToBinaryPrefixString()}, Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100:F2}%, Elapsed={this.Elapsed}, CompressedDataRate={(this.TotalCompressedSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec, OriginalDataRate={(this.TotalOriginalSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec";
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-using PowerPlayZipper.Internal;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
 {
@@ -33,6 +33,6 @@ namespace PowerPlayZipper
             Replace('/', Path.DirectorySeparatorChar);
 
         public override string ToString() =>
-            $"{this.NormalizedFileName}: CompressedSize={this.CompressedSize.ToByteSize()}, OriginalSize={this.OriginalSize.ToByteSize()}, Crc32=0x{this.Crc32:x8}";
+            $"\"{this.NormalizedFileName}\": CompressedSize={this.CompressedSize.ToBinaryPrefixString()}, OriginalSize={this.OriginalSize.ToBinaryPrefixString()}, Crc32=0x{this.Crc32:x8}";
     }
 }
