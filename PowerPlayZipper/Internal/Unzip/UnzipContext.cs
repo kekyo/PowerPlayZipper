@@ -15,7 +15,7 @@ namespace PowerPlayZipper.Internal.Unzip
         private readonly Func<ZippedFileEntry, bool> predicate;
         private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
         private readonly List<Exception> caughtExceptions = new List<Exception>();
-        private readonly Action<List<Exception>> finished;
+        private readonly Action<List<Exception>, int> finished;
 
         private volatile int runningThreads;
 
@@ -33,7 +33,7 @@ namespace PowerPlayZipper.Internal.Unzip
             int streamBufferSize,
             Func<ZippedFileEntry, bool> predicate,
             Action<ZippedFileEntry, Stream?, byte[]?> action,
-            Action<List<Exception>> finished)
+            Action<List<Exception>, int> finished)
         {
             this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
             this.Encoding = encoding;
@@ -99,7 +99,7 @@ namespace PowerPlayZipper.Internal.Unzip
             // Last one.
             if (runningThreads <= 0)
             {
-                this.finished(this.caughtExceptions);
+                this.finished(this.caughtExceptions, this.workers.Length);
 
                 // Make GC safer.
                 for (var index = 0; index < this.workers.Length; index++)

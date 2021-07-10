@@ -68,6 +68,7 @@ namespace PowerPlayZipper
                 Console.WriteLine($"  Compressed : {result.TotalCompressedSize.ToBinaryPrefixString()} [{(result.TotalCompressedSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
                 Console.WriteLine($"  Expanded   : {result.TotalOriginalSize.ToBinaryPrefixString()} [{(result.TotalOriginalSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
                 Console.WriteLine($"  Ratio      : {(double)result.TotalOriginalSize / result.TotalCompressedSize * 100:F2}%");
+                Console.WriteLine($"  Parallel   : {result.ParallelCount} [{unzipper.MaxParallelCount}]");
 
                 if ((index + 1) < parsed.Count)
                 {

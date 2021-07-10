@@ -135,7 +135,7 @@ namespace PowerPlayZipper
                         this,
                         new ProcessingEventArgs(entry, ProcessingStates.Done, entry.OriginalSize));
                 },
-                exceptions =>
+                (exceptions, parallelCount) =>
                 {
                     if (exceptions.Count >= 1)
                     {
@@ -144,7 +144,7 @@ namespace PowerPlayZipper
                     else
                     {
                         succeeded(new ProcessedResults(
-                            totalFiles, totalCompressedSize, totalOriginalSize, sw.Elapsed));
+                            totalFiles, totalCompressedSize, totalOriginalSize, sw.Elapsed, parallelCount));
                     }
                 });
 
