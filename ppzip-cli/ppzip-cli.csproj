@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>ppzip</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net462;net5.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>PowerPlayZipper</RootNamespace>
@@ -25,45 +26,38 @@
 
     <Company>Kouji Matsui (@kozy_kekyo, @kekyo2)</Company>
     <Authors>Kouji Matsui (@kozy_kekyo, @kekyo2)</Authors>
-
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/kekyo/PowerPlayZipper.git</PackageProjectUrl>
+    <PackageIcon>PowerPlayZipper.100.png</PackageIcon>
+    <PackageTags>zip;unzip;fast</PackageTags>
+      
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <ApplicationManifest>..\ppzip\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Images\PowerPlayZipper.ico</ApplicationIcon>
-  </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net5.0'">
-    <!--
-    <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>link</TrimMode>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishReadyToRun>false</PublishReadyToRun>
-    -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ppzip</ToolCommandName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
     <PackageReference Include="Mono.Options" Version="6.6.0.161" />
     <PackageReference Include="RelaxVersioner" Version="2.3.2" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="('$(TargetFramework)' == 'net462') AND ('$(MSBuildRuntimeType)' == 'Full')">
-    <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
+    <!--
+      Currently 'PrivateAssets' directive is ignored and will contain unused 'lib' directory inside nupkg.
+      https://github.com/dotnet/sdk/issues/952
+    -->
+    <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\Images\PowerPlayZipper.ico" Link="PowerPlayZipper.ico" />
+    <None Include="..\Images\PowerPlayZipper.100.png" Pack="true" PackagePath="/" />
+    <None Include="..\Images\PowerPlayZipper.ico" Link="PowerPlayZipper.ico" Pack="false" />
+    <None Include="..\ppzip\App.config" Link="App.config" />
+    <None Include="..\ppzip\app.manifest" Link="app.manifest" />
+    <Compile Include="..\ppzip\Program.cs" Link="Program.cs" />
   </ItemGroup>
-
-  <Target Name="ILRepack" AfterTargets="Build" Condition="('$(TargetFramework)' == 'net462') AND ('$(MSBuildRuntimeType)' == 'Full')">
-    <PropertyGroup>
-      <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)</WorkingDirectory>
-    </PropertyGroup>
-    <ILRepack OutputType="$(OutputType)" MainAssembly="$(AssemblyName).exe" OutputAssembly="$(AssemblyName).exe" InputAssemblies="$(WorkingDirectory)\*.dll" WilcardInputAssemblies="true" WorkingDirectory="$(WorkingDirectory)" />
-  </Target>
     
 </Project>

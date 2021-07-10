@@ -6,7 +6,8 @@
 
 |Status|Badge|
 |:---|:---|
-|NuGet|[![NuGet PowerPlayZipper](https://img.shields.io/nuget/v/PowerPlayZipper.svg?style=flat)](https://www.nuget.org/packages/PowerPlayZipper)|
+|NuGet (Library)|[![NuGet PowerPlayZipper](https://img.shields.io/nuget/v/PowerPlayZipper.svg?style=flat)](https://www.nuget.org/packages/PowerPlayZipper)|
+|NuGet (.NET CLI command)|[![NuGet ppzip](https://img.shields.io/nuget/v/ppzip.svg?style=flat)](https://www.nuget.org/packages/ppzip)|
 |CI|[![PowerPlayZipper CI build (main)](https://github.com/kekyo/PowerPlayZipper/workflows/.NET/badge.svg?branch=main)](https://github.com/kekyo/PowerPlayZipper/actions)|
 
 # What's this?
@@ -51,7 +52,14 @@ public async Task YourZipTaskWithManyFiles(
 }
 ```
 
-# Unzipping (Decompression) performance
+## .NET CLI Tool supported
+
+```sh
+$ dotnet tool install --global ppzip
+
+```
+
+# Unzipping performance
 
 Using these zip files on Benchmark .NET:
 
