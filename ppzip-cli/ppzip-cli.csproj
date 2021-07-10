@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>ppzip</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.0;netcoreapp2.1;netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.1;netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>PowerPlayZipper</RootNamespace>
@@ -30,7 +30,7 @@
     <PackageProjectUrl>https://github.com/kekyo/PowerPlayZipper.git</PackageProjectUrl>
     <PackageIcon>PowerPlayZipper.100.png</PackageIcon>
     <PackageTags>zip;unzip;fast</PackageTags>
-      
+
     <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <ApplicationManifest>..\ppzip\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Images\PowerPlayZipper.ico</ApplicationIcon>
