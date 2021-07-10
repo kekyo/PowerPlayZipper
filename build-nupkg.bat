@@ -25,5 +25,6 @@ rem git clean -xfd
 
 dotnet restore
 dotnet build -c Release -p:Platform="Any CPU" PowerPlayZipper.sln
-dotnet publish -c Release -p:TargetFramework=net5.0 ppzip\ppzip.csproj
+rem dotnet publish -c Release -p:TargetFramework=net5.0 ppzip\ppzip.csproj
 dotnet pack -p:Configuration=Release -p:Platform=AnyCPU -o artifacts PowerPlayZipper\PowerPlayZipper.csproj
+dotnet pack -p:Configuration=Release -p:Platform=AnyCPU -o artifacts ppzip\ppzip.csproj
