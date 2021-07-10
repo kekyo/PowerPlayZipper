@@ -37,7 +37,6 @@
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <IncludeSymbolsInSingleFile>true</IncludeSymbolsInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
