@@ -5,6 +5,10 @@ using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
+    /// <summary>
+    /// Fast object instance pooler.
+    /// </summary>
+    /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Pool<T>
         where T : class, new()
     {
@@ -22,6 +26,10 @@ namespace PowerPlayZipper.Internal
             }
         }
 
+        /// <summary>
+        /// Rent an instance.
+        /// </summary>
+        /// <returns>Instance</returns>
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
@@ -48,6 +56,10 @@ namespace PowerPlayZipper.Internal
             return new T();
         }
 
+        /// <summary>
+        /// Return an instance.
+        /// </summary>
+        /// <param name="value">Instance (will remove from argument)</param>
         public void Return(ref T? value)
         {
             Debug.Assert(value != null);
@@ -70,6 +82,9 @@ namespace PowerPlayZipper.Internal
             }
         }
 
+        /// <summary>
+        /// Refill an instance if required.
+        /// </summary>
         public void Refill()
         {
             lock (this.floodPool)

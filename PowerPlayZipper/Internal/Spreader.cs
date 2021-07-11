@@ -5,26 +5,50 @@ using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
+    /// <summary>
+    /// Fast instance spread controller.
+    /// </summary>
+    /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Spreader<T>
         where T : class
     {
-        private const int ReserveSize = 4;
+        private const int RequestSize = 4;
 
-        private readonly T?[] reserves = new T[ReserveSize];
+        private enum States
+        {
+            Run,
+            Shutdown,
+            Abort,
+        }
+
+        private readonly T?[] requests = new T[RequestSize];
         private readonly Queue<T> floodQueue = new Queue<T>();
-        private volatile bool isAborting;
+        private volatile int count;
+        private volatile States state = States.Run;
 
+        public void RequestShutdown() =>
+            this.state = States.Shutdown;
+
+        public void RequestAbort() =>
+            this.state = States.Abort;
+
+        /// <summary>
+        /// Request for spreading an instance.
+        /// </summary>
+        /// <param name="value">Instance (will remove from argument)</param>
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public void Post(ref T? value)
+        public void Request(ref T? value)
         {
             Debug.Assert(value != null);
 
-            for (var index = 0; index < this.reserves.Length; index++)
+            Interlocked.Increment(ref this.count);
+
+            for (var index = 0; index < this.requests.Length; index++)
             {
                 var parked = Interlocked.CompareExchange(
-                    ref this.reserves[index], value, null);
+                    ref this.requests[index], value, null);
                 if (parked == null)
                 {
                     value = null;
@@ -39,33 +63,58 @@ namespace PowerPlayZipper.Internal
             }
         }
 
-        public T? Take()
+        private T? InternalTake()
         {
-            while (!this.isAborting)
+            for (var index = 0; index < this.requests.Length; index++)
             {
-                for (var index = 0; index < this.reserves.Length; index++)
+                var request = Interlocked.Exchange(
+                    ref this.requests[index], null);
+                if (request != null)
                 {
-                    var reserved = Interlocked.Exchange(
-                        ref this.reserves[index], null);
-                    if (reserved != null)
-                    {
-                        return reserved;
-                    }
-                }
+                    var count = Interlocked.Decrement(ref this.count);
+                    Debug.Assert(count >= 0);
 
-                lock (this.floodQueue)
+                    return request;
+                }
+            }
+
+            lock (this.floodQueue)
+            {
+                if (this.floodQueue.Count >= 1)
                 {
-                    if (this.floodQueue.Count >= 1)
-                    {
-                        return this.floodQueue.Dequeue();
-                    }
+                    var count = Interlocked.Decrement(ref this.count);
+                    Debug.Assert(count >= 0);
+
+                    return this.floodQueue.Dequeue();
                 }
             }
 
             return null;
         }
 
-        public void RequestAbort() =>
-            this.isAborting = true;
+        /// <summary>
+        /// Take a requested instance.
+        /// </summary>
+        /// <returns>Instance if succeeded</returns>
+        public T? Take()
+        {
+            while (this.state == States.Run)
+            {
+                if (this.InternalTake() is { } request)
+                {
+                    return request;
+                }
+            }
+
+            while ((this.state == States.Shutdown) && (this.count >= 1))
+            {
+                if (this.InternalTake() is { } request)
+                {
+                    return request;
+                }
+            }
+
+            return null;
+        }
     }
 }

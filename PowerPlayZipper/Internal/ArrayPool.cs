@@ -5,6 +5,10 @@ using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
+    /// <summary>
+    /// Fast array instance pooler.
+    /// </summary>
+    /// <typeparam name="T">Array element type</typeparam>
     internal sealed class ArrayPool<T>
     {
         private const int PoolSize = 32;
@@ -14,6 +18,10 @@ namespace PowerPlayZipper.Internal
 
         public readonly int ElementSize;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="elementSize">Array element size</param>
         public ArrayPool(int elementSize)
         {
             this.ElementSize = elementSize;
@@ -25,6 +33,10 @@ namespace PowerPlayZipper.Internal
             }
         }
 
+        /// <summary>
+        /// Rent an array.
+        /// </summary>
+        /// <returns>Array instance</returns>
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
@@ -51,6 +63,10 @@ namespace PowerPlayZipper.Internal
             return new T[this.ElementSize];
         }
 
+        /// <summary>
+        /// Return an array instance.
+        /// </summary>
+        /// <param name="value">Array instance (will remove from argument)</param>
         public void Return(ref T[]? array)
         {
             Debug.Assert(array != null);
@@ -73,6 +89,9 @@ namespace PowerPlayZipper.Internal
             }
         }
 
+        /// <summary>
+        /// Refill an array if required.
+        /// </summary>
         public void Refill()
         {
             lock (this.floodPool)

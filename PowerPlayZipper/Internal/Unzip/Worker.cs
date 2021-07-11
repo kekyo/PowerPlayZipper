@@ -9,7 +9,7 @@ using PowerPlayZipper.Compatibility;
 
 namespace PowerPlayZipper.Internal.Unzip
 {
-    internal sealed class UnzipWorker
+    internal sealed class Worker
     {
         [Flags]
         private enum GeneralPurposeBitFlags : short
@@ -24,7 +24,7 @@ namespace PowerPlayZipper.Internal.Unzip
         private readonly byte[] streamBuffer;
         private readonly Thread thread;
 
-        public UnzipWorker(string zipFilePath, UnzipContext context)
+        public Worker(string zipFilePath, UnzipContext context)
         {
             this.context = context;
             this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);
@@ -62,14 +62,12 @@ namespace PowerPlayZipper.Internal.Unzip
                     return;
                 }
 
-                Debug.Assert(request.Buffer != null);
-
                 //var versionNeededToExtract = BinaryPrimitives.ReadUInt16LittleEndian(
                 //    request.Buffer, request.BufferOffset + 4);
                 var generalPurposeBitFlag = (GeneralPurposeBitFlags)BinaryPrimitives.ReadInt16LittleEndian(
-                    request.Buffer!, request.BufferOffset + 6);
+                    request.Buffer!, request.BufferOffsetOfEntry + 6);
                 var compressionMethod = (CompressionMethods)BinaryPrimitives.ReadInt16LittleEndian(
-                    request.Buffer!, request.BufferOffset + 8);
+                    request.Buffer!, request.BufferOffsetOfEntry + 8);
 
                 if (!IsSupported(compressionMethod, generalPurposeBitFlag))
                 {
@@ -79,13 +77,13 @@ namespace PowerPlayZipper.Internal.Unzip
                 }
 
                 var time = BinaryPrimitives.ReadUInt16LittleEndian(
-                    request.Buffer!, request.BufferOffset + 10);
+                    request.Buffer!, request.BufferOffsetOfEntry + 10);
                 var date = BinaryPrimitives.ReadUInt16LittleEndian(
-                    request.Buffer!, request.BufferOffset + 12);
+                    request.Buffer!, request.BufferOffsetOfEntry + 12);
                 var crc32 = BinaryPrimitives.ReadUInt32LittleEndian(
-                    request.Buffer!, request.BufferOffset + 14);
+                    request.Buffer!, request.BufferOffsetOfEntry + 14);
                 var originalSize = BinaryPrimitives.ReadUInt32LittleEndian(
-                    request.Buffer!, request.BufferOffset + 22);
+                    request.Buffer!, request.BufferOffsetOfEntry + 22);
 
                 var encoding =
                     ((generalPurposeBitFlag & GeneralPurposeBitFlags.EntryIsUTF8) == GeneralPurposeBitFlags.EntryIsUTF8) ?
@@ -156,7 +154,8 @@ namespace PowerPlayZipper.Internal.Unzip
                     }
                 }
 
-                var bodyPosition = request.CommentOffset + request.CommentLength;
+                var bodyPosition = request.BufferPosition +
+                    request.CommentOffset + request.CommentLength;
                 var compressedSize = request.CompressedSize;
 
                 request!.Clear();
@@ -179,7 +178,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     crc32,
                     dateTime);
 
-                if (!this.context.Evaluate(entry))
+                if (!this.context.OnEvaluate(entry))
                 {
                     continue;
                 }
@@ -190,18 +189,18 @@ namespace PowerPlayZipper.Internal.Unzip
                 {
                     case CompressionMethods.Stored:
                         this.rangedStream.SetRange(bodyPosition, compressedSize);
-                        this.context.OnAction(
+                        this.context.OnProcess(
                             entry, rangedStream, this.streamBuffer);
                         break;
                     case CompressionMethods.Deflate:
                         this.rangedStream.SetRange(bodyPosition, compressedSize);
                         var compressedStream = new DeflateStream(
                             this.rangedStream, CompressionMode.Decompress, false);
-                        this.context.OnAction(
+                        this.context.OnProcess(
                             entry, compressedStream, this.streamBuffer);
                         break;
                     case CompressionMethods.Directory:
-                        this.context.OnAction(
+                        this.context.OnProcess(
                             entry, null, null);
                         break;
                 }

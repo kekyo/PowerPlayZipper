@@ -74,7 +74,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     request!.Buffer = buffer;
                     request.BufferSize = this.lastReadSize;
                     request.BufferPosition = this.bufferPosition;
-                    request.BufferOffset = bufferOffset;
+                    request.BufferOffsetOfEntry = bufferOffset;
 
                     var fileNameLength = BinaryPrimitives.ReadUInt16LittleEndian(
                         buffer!, bufferOffset + 26);
@@ -105,7 +105,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     request.CompressedSize = compressedSize;
 
                     // Enqueue
-                    this.context.RequestSpreader.Post(ref request);
+                    this.context.RequestSpreader.Request(ref request);
                     Debug.Assert(request == null);
 
                     // Reached buffer tail?
@@ -134,6 +134,7 @@ namespace PowerPlayZipper.Internal.Unzip
             finally
             {
                 this.stream.Dispose();
+                this.context.OnParserFinished();
             }
         }
     }
