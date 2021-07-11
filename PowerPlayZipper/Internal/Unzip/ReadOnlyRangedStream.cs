@@ -3,6 +3,9 @@ using System.IO;
 
 namespace PowerPlayZipper.Internal.Unzip
 {
+    /// <summary>
+    /// Read only range constrained stream.
+    /// </summary>
     internal sealed class ReadOnlyRangedStream : Stream
     {
         private readonly FileStream stream;
@@ -15,6 +18,11 @@ namespace PowerPlayZipper.Internal.Unzip
             this.constrainedSize = this.stream.Length;
         }
 
+        /// <summary>
+        /// Set range and begin constraint.
+        /// </summary>
+        /// <param name="initialPosition">Initial position on the file</param>
+        /// <param name="constrainedSize">Constrained size</param>
         public void SetRange(long initialPosition, long constrainedSize)
         {
             this.stream.Position = initialPosition;
@@ -26,6 +34,10 @@ namespace PowerPlayZipper.Internal.Unzip
             this.constrainedSize = constrainedSize;
         }
 
+        /// <summary>
+        /// Reset and make free access.
+        /// </summary>
+        /// <param name="initialPosition">Initial position on the file</param>
         public void ResetRange(long initialPosition)
         {
             this.stream.Position = initialPosition;
@@ -69,18 +81,5 @@ namespace PowerPlayZipper.Internal.Unzip
 
         public override void Write(byte[] buffer, int offset, int count) =>
             throw new NotImplementedException();
-
-        protected override void Dispose(bool disposing)
-        {
-        }
-
-#if !NETCOREAPP1_0 && !NETSTANDARD1_3 && !NETSTANDARD1_6
-        public override void Close()
-        {
-        }
-#endif
-
-        internal void Destroy() =>
-            this.stream.Dispose();
     }
 }

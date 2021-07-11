@@ -11,10 +11,13 @@ namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class UnzipContext
     {
-        private readonly UnzipWorker?[] workers;
+        private const int BufferSize = 4096;
+
+        private Parser? parser;
+        private readonly Worker?[] workers;
         private readonly Func<ZippedFileEntry, bool> predicate;
         private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
-        private readonly List<Exception> caughtExceptions = new List<Exception>();
+        private readonly List<Exception> caughtExceptions = new();
         private readonly Action<List<Exception>, int> finished;
 
         private volatile int runningThreads;
@@ -23,7 +26,9 @@ namespace PowerPlayZipper.Internal.Unzip
         public readonly Encoding Encoding;
         public readonly int StreamBufferSize;
 
-        public volatile UnzipCommonRoleContext? CommonRoleContext;
+        public readonly ArrayPool<byte> BufferPool = new(BufferSize);
+        public readonly Pool<RequestInformation> RequestPool = new();
+        public readonly Spreader<RequestInformation> RequestSpreader = new();
 
         public UnzipContext(
             string zipFilePath,
@@ -38,19 +43,26 @@ namespace PowerPlayZipper.Internal.Unzip
             this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
             this.Encoding = encoding;
             this.StreamBufferSize = streamBufferSize;
+
             this.predicate = predicate;
             this.action = action;
             this.finished = finished;
-            this.CommonRoleContext = new UnzipCommonRoleContext(zipFilePath);
 
-            this.workers = new UnzipWorker[parallelCount];
+            this.workers = new Worker[parallelCount];
             for (var index = 0; index < this.workers.Length; index++)
             {
-                this.workers[index] = new UnzipWorker(zipFilePath, this);
+                this.workers[index] = new Worker(zipFilePath, this);
             }
+
+            this.parser = new Parser(this, zipFilePath);
         }
 
-        public bool Evaluate(ZippedFileEntry entry)
+        /// <summary>
+        /// Evaluate file entry.
+        /// </summary>
+        /// <param name="entry">File entry</param>
+        /// <returns>True if required processing</returns>
+        internal bool OnEvaluate(ZippedFileEntry entry)
         {
             try
             {
@@ -67,7 +79,13 @@ namespace PowerPlayZipper.Internal.Unzip
             return false;
         }
 
-        public void OnAction(
+        /// <summary>
+        /// Process a file entry.
+        /// </summary>
+        /// <param name="entry">File entry</param>
+        /// <param name="compressedStream">Read from this stream if available</param>
+        /// <param name="streamBuffer">Can use this stream buffer if available</param>
+        internal void OnProcess(
             ZippedFileEntry entry, Stream? compressedStream, byte[]? streamBuffer)
         {
             try
@@ -83,7 +101,11 @@ namespace PowerPlayZipper.Internal.Unzip
             }
         }
 
-        public void OnError(Exception ex)
+        /// <summary>
+        /// Record an exception.
+        /// </summary>
+        /// <param name="ex">Exception</param>
+        internal void OnError(Exception ex)
         {
             lock (this.caughtExceptions)
             {
@@ -91,7 +113,10 @@ namespace PowerPlayZipper.Internal.Unzip
             }
         }
 
-        public void OnFinished()
+        /// <summary>
+        /// Mark finished a worker.
+        /// </summary>
+        internal void OnFinished()
         {
             var runningThreads = Interlocked.Decrement(ref this.runningThreads);
             Debug.Assert(runningThreads >= 0);
@@ -106,16 +131,20 @@ namespace PowerPlayZipper.Internal.Unzip
                 {
                     this.workers[index] = null!;
                 }
-
-                // Close entry stream.
-                Debug.Assert(this.CommonRoleContext != null);
-                this.CommonRoleContext?.EntryStream.Dispose();
+                this.parser = null;
             }
         }
 
+        internal void OnParserFinished() =>
+            this.RequestSpreader.RequestShutdown();
+
+        /// <summary>
+        /// Start unzipping operation.
+        /// </summary>
         public void Start()
         {
             Debug.Assert(this.runningThreads == 0);
+            Debug.Assert(this.parser != null);
 
             this.runningThreads = this.workers.Length;
             for (var index = 0; index < this.workers.Length; index++)
@@ -123,24 +152,18 @@ namespace PowerPlayZipper.Internal.Unzip
                 Debug.Assert(this.workers[index] != null);
                 this.workers[index]!.StartConsume();
             }
+
+            this.parser!.Start();
         }
 
+        /// <summary>
+        /// Request abort for unzipping operation.
+        /// </summary>
+        /// <remarks>Will invoke "finished" delegate when all workers are finished.</remarks>
         public void RequestAbort()
         {
-            while (this.runningThreads >= 1)
-            {
-                // Take role context. (Spin loop)
-                var commonRoleContext = Interlocked.Exchange(ref this.CommonRoleContext, null);
-                if (commonRoleContext == null)
-                {
-                    continue;
-                }
-
-                // Request abort.
-                commonRoleContext.HeaderPosition = -1;
-                this.CommonRoleContext = commonRoleContext;
-                break;
-            }
+            this.parser?.RequestAbort();
+            this.RequestSpreader.RequestAbort();
         }
     }
 }

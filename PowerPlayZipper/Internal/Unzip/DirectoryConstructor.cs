@@ -10,10 +10,17 @@ using ManualResetEventSlim = System.Threading.ManualResetEvent;
 
 namespace PowerPlayZipper.Internal.Unzip
 {
+    /// <summary>
+    /// Fast and lightweight directory creator.
+    /// </summary>
     internal sealed class DirectoryConstructor
     {
         private readonly Dictionary<string, ManualResetEventSlim?> processings = new();
-
+        
+        /// <summary>
+        /// Create directory if not exist.
+        /// </summary>
+        /// <param name="directoryPath">Target directory path</param>
         public void CreateIfNotExist(string directoryPath)
         {
             var firstTime = false;
