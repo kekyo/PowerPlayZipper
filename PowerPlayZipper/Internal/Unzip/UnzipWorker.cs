@@ -19,11 +19,8 @@ namespace PowerPlayZipper.Internal.Unzip
             EntryIsUTF8 = 0x0800,  // bit11
         }
 
-        private const int PK0304HeaderSize = 30;
-
         private readonly UnzipContext context;
         private readonly ReadOnlyRangedStream rangedStream;
-        private readonly byte[] entryBuffer;
         private readonly byte[] streamBuffer;
         private readonly Thread thread;
 
@@ -31,24 +28,8 @@ namespace PowerPlayZipper.Internal.Unzip
         {
             this.context = context;
             this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);
-            this.entryBuffer = new byte[UnzipCommonRoleContext.EntryBufferSize];
             this.streamBuffer = new byte[context.StreamBufferSize];
-            this.thread = new Thread(() =>
-            {
-                try
-                {
-                    this.ThreadEntryCore();
-                }
-                catch (Exception ex)
-                {
-                    this.context.OnError(ex);
-                }
-                finally
-                {
-                    this.rangedStream.Dispose();
-                    this.context.OnFinished();
-                }
-            });
+            this.thread = new Thread(this.ThreadEntry);
             this.thread.IsBackground = true;
         }
 
@@ -67,199 +48,180 @@ namespace PowerPlayZipper.Internal.Unzip
         private static bool IsDirectory(CompressionMethods cm, string fileName) =>
             (cm == CompressionMethods.Stored) && fileName.EndsWith("/");
 
-#if !NET20 && !NET35 && !NET40
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
-        private UnzipCommonRoleContext TakeCommonRole()
+        private void UnzipCore()
         {
             while (true)
             {
-                // Take role context. (Spin loop)
-                var commonRoleContext = Interlocked.Exchange(ref this.context.CommonRoleContext, null);
-                if (commonRoleContext != null)
+                // Refill array pool (on this worker thread).
+                this.context.BufferPool.Refill();
+
+                // Received abort request.
+                var request = this.context.RequestSpreader.Take();
+                if (request == null)
                 {
-                    return commonRoleContext;
+                    return;
+                }
+
+                Debug.Assert(request.Buffer != null);
+
+                //var versionNeededToExtract = BinaryPrimitives.ReadUInt16LittleEndian(
+                //    request.Buffer, request.BufferOffset + 4);
+                var generalPurposeBitFlag = (GeneralPurposeBitFlags)BinaryPrimitives.ReadInt16LittleEndian(
+                    request.Buffer!, request.BufferOffset + 6);
+                var compressionMethod = (CompressionMethods)BinaryPrimitives.ReadInt16LittleEndian(
+                    request.Buffer!, request.BufferOffset + 8);
+
+                if (!IsSupported(compressionMethod, generalPurposeBitFlag))
+                {
+                    request.Clear();
+                    this.context.RequestPool.Return(ref request);
+                    continue;
+                }
+
+                var time = BinaryPrimitives.ReadUInt16LittleEndian(
+                    request.Buffer!, request.BufferOffset + 10);
+                var date = BinaryPrimitives.ReadUInt16LittleEndian(
+                    request.Buffer!, request.BufferOffset + 12);
+                var crc32 = BinaryPrimitives.ReadUInt32LittleEndian(
+                    request.Buffer!, request.BufferOffset + 14);
+                var originalSize = BinaryPrimitives.ReadUInt32LittleEndian(
+                    request.Buffer!, request.BufferOffset + 22);
+
+                var encoding =
+                    ((generalPurposeBitFlag & GeneralPurposeBitFlags.EntryIsUTF8) == GeneralPurposeBitFlags.EntryIsUTF8) ?
+                        Encoding.UTF8 :
+                        this.context.Encoding;
+
+                string fileName;
+
+                // Can copy all file name string from the buffer.
+                var bufferRemains = request.BufferSize - request.FileNameOffset;
+                if (request.FileNameLength <= bufferRemains)
+                {
+                    try
+                    {
+                        fileName = encoding.GetString(
+                            request.Buffer!, request.FileNameOffset, request.FileNameLength);
+                    }
+                    // Invalid Unicode code point or else.
+                    catch (Exception ex)
+                    {
+                        request.Clear();
+                        this.context.RequestPool.Return(ref request);
+                        this.context.OnError(ex);
+                        continue;
+                    }
+                }
+                // Required last file name string fragment from the zip file.
+                else
+                {
+                    var temporaryBuffer = new byte[request.FileNameLength];
+                    var firstFragmentLength = bufferRemains;
+                    var lastFragmentLength = request.FileNameLength - firstFragmentLength;
+
+                    // Copy first file name string fragment from the buffer.
+                    Array.Copy(
+                        request.Buffer!, request.FileNameOffset,
+                        temporaryBuffer, 0, firstFragmentLength);
+
+                    try
+                    {
+                        // Reset stream position.
+                        this.rangedStream.ResetRange(
+                            request.BufferPosition + request.FileNameOffset + firstFragmentLength);
+
+                        // Read last file name string fragment from the zip file.
+                        var readLastFragmentLength = this.rangedStream.Read(
+                            temporaryBuffer,
+                            firstFragmentLength,
+                            lastFragmentLength);
+                        if (readLastFragmentLength != lastFragmentLength)
+                        {
+                            // Start finishing by EOF. (Has invalid header)
+                            request.Clear();
+                            this.context.RequestPool.Return(ref request);
+                            this.context.OnError(new FormatException("TODO:"));
+                            continue;
+                        }
+
+                        fileName = encoding.GetString(temporaryBuffer);
+                    }
+                    // IO problem, invalid Unicode code point or else.
+                    catch (Exception ex)
+                    {
+                        request!.Clear();
+                        this.context.RequestPool.Return(ref request);
+                        this.context.OnError(ex);
+                        continue;
+                    }
+                }
+
+                var bodyPosition = request.CommentOffset + request.CommentLength;
+                var compressedSize = request.CompressedSize;
+
+                request!.Clear();
+                this.context.RequestPool.Return(ref request);
+
+                var isDirectory = IsDirectory(compressionMethod, fileName);
+                if (this.context.IgnoreDirectoryEntry && isDirectory)
+                {
+                    continue;
+                }
+
+                // TODO:
+                var dateTime = default(DateTime);
+
+                var entry = new ZippedFileEntry(
+                    fileName,
+                    isDirectory ? CompressionMethods.Directory : compressionMethod,
+                    compressedSize,
+                    originalSize,
+                    crc32,
+                    dateTime);
+
+                if (!this.context.Evaluate(entry))
+                {
+                    continue;
+                }
+
+                ///////////////////////////////////////////////////////////////////////
+
+                switch (entry.CompressionMethod)
+                {
+                    case CompressionMethods.Stored:
+                        this.rangedStream.SetRange(bodyPosition, compressedSize);
+                        this.context.OnAction(
+                            entry, rangedStream, this.streamBuffer);
+                        break;
+                    case CompressionMethods.Deflate:
+                        this.rangedStream.SetRange(bodyPosition, compressedSize);
+                        var compressedStream = new DeflateStream(
+                            this.rangedStream, CompressionMode.Decompress, false);
+                        this.context.OnAction(
+                            entry, compressedStream, this.streamBuffer);
+                        break;
+                    case CompressionMethods.Directory:
+                        this.context.OnAction(
+                            entry, null, null);
+                        break;
                 }
             }
         }
 
-#if !NET20 && !NET35 && !NET40
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
-        private void ReleaseCommonRole(ref UnzipCommonRoleContext? commonRoleContext)
+        private void ThreadEntry()
         {
-            this.context.CommonRoleContext = commonRoleContext;
-            commonRoleContext = null;
-        }
-
-        private void ThreadEntryCore()
-        {
-            while (true)
+            try
             {
-                // Dequeue next header fetching.
-                var commonRoleContext = this.TakeCommonRole();
-
-                ///////////////////////////////////////////////////////////////////////
-                // Common thread role region.
-
-                // Received abort request.
-                if (commonRoleContext.HeaderPosition == -1)
-                {
-                    this.ReleaseCommonRole(ref commonRoleContext);
-                    break;
-                }
-
-                // Read first header bytes.
-                commonRoleContext.EntryStream.Position = commonRoleContext.HeaderPosition;
-                var read = commonRoleContext.EntryStream.Read(
-                    this.entryBuffer, 0, UnzipCommonRoleContext.EntryBufferSize);
-                if (read < PK0304HeaderSize)
-                {
-                    // Start finishing by EOF. (Has unknown data)
-                    commonRoleContext.HeaderPosition = -1;
-                    this.ReleaseCommonRole(ref commonRoleContext);
-                    break;
-                }
-
-                var signature = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 0);
-                if (signature != 0x04034b50) // PK0304
-                {
-                    // Start finishing by EOF. (Has unknown header)
-                    commonRoleContext.HeaderPosition = -1;
-                    this.ReleaseCommonRole(ref commonRoleContext);
-                    break;
-                }
-
-                var fileNameLength = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 26);
-                if (fileNameLength == 0)
-                {
-                    // Raise fatal header error.
-                    commonRoleContext.HeaderPosition = -1;
-                    this.ReleaseCommonRole(ref commonRoleContext);
-                    this.context.OnError(new FormatException("TODO:"));
-                    break;
-                }
-
-                var compressedSize = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 18);
-                var commentLength = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 28);
-
-                // Update next header position.
-                var fileNamePosition = commonRoleContext.HeaderPosition + PK0304HeaderSize;
-                var streamPosition = fileNamePosition + fileNameLength + commentLength;
-                commonRoleContext.HeaderPosition = streamPosition + compressedSize;
-
-                // Enqueue next header.
-                this.ReleaseCommonRole(ref commonRoleContext);
-
-                Debug.Assert(commonRoleContext == null);
-
-                ///////////////////////////////////////////////////////////////////////
-                // Worker thread role.
-
-                //var versionNeededToExtract = BitConverter.ToUInt16(this.entryBuffer, 4);
-                var generalPurposeBitFlag = (GeneralPurposeBitFlags)BinaryPrimitives.ReadInt16LittleEndian(this.entryBuffer, 6);
-                var compressionMethod = (CompressionMethods)BinaryPrimitives.ReadInt16LittleEndian(this.entryBuffer, 8);
-
-                if (IsSupported(compressionMethod, generalPurposeBitFlag))
-                {
-                    var time = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 10);
-                    var date = BinaryPrimitives.ReadUInt16LittleEndian(this.entryBuffer, 12);
-                    var crc32 = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 14);
-                    var originalSize = BinaryPrimitives.ReadUInt32LittleEndian(this.entryBuffer, 22);
-
-                    var encoding =
-                        ((generalPurposeBitFlag & GeneralPurposeBitFlags.EntryIsUTF8) == GeneralPurposeBitFlags.EntryIsUTF8) ?
-                            Encoding.UTF8 :
-                            this.context.Encoding;
-
-                    string fileName;
-                    if (fileNameLength <= (UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize))
-                    {
-                        try
-                        {
-                            fileName = encoding.GetString(this.entryBuffer, PK0304HeaderSize, fileNameLength);
-                        }
-                        // IO problem, invalid Unicode code point or else.
-                        catch (Exception ex)
-                        {
-                            this.context.OnError(ex);
-                            continue;
-                        }
-                    }
-                    // Rare case: Very long file name.
-                    else
-                    {
-                        var temporaryBuffer = new byte[fileNameLength];
-
-                        Array.Copy(
-                            this.entryBuffer, 32,
-                            temporaryBuffer, 0, UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize);
-
-                        this.rangedStream.ResetRange(fileNamePosition);
-                        var fileNameReaminsSize =
-                            fileNameLength - (UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize);
-
-                        try
-                        {
-                            var fileNameRemains = this.rangedStream.Read(
-                                temporaryBuffer,
-                                UnzipCommonRoleContext.EntryBufferSize - PK0304HeaderSize,
-                                fileNameReaminsSize);
-                            if (fileNameRemains != fileNameReaminsSize)
-                            {
-                                // Start finishing by EOF. (Has invalid header)
-                                this.context.OnError(new FormatException("TODO:"));
-                                continue;
-                            }
-
-                            fileName = encoding.GetString(temporaryBuffer);
-                        }
-                        // IO problem, invalid Unicode code point or else.
-                        catch (Exception ex)
-                        {
-                            this.context.OnError(ex);
-                            continue;
-                        }
-                    }
-
-                    var isDirectory = IsDirectory(compressionMethod, fileName);
-                    if (!this.context.IgnoreDirectoryEntry || !isDirectory)
-                    {
-                        // TODO:
-                        var dateTime = default(DateTime);
-
-                        var entry = new ZippedFileEntry(
-                            fileName,
-                            isDirectory ? CompressionMethods.Directory : compressionMethod,
-                            compressedSize,
-                            originalSize,
-                            crc32,
-                            dateTime);
-
-                        if (this.context.Evaluate(entry))
-                        {
-                            ///////////////////////////////////////////////////////////////////////
-                            // Unzip core.
-
-                            switch (entry.CompressionMethod)
-                            {
-                                case CompressionMethods.Stored:
-                                    this.rangedStream.SetRange(streamPosition, entry.CompressedSize);
-                                    this.context.OnAction(entry, rangedStream, this.streamBuffer);
-                                    break;
-                                case CompressionMethods.Deflate:
-                                    this.rangedStream.SetRange(streamPosition, entry.CompressedSize);
-                                    var compressedStream = new DeflateStream(
-                                        this.rangedStream, CompressionMode.Decompress, false);
-                                    this.context.OnAction(entry, compressedStream, this.streamBuffer);
-                                    break;
-                                case CompressionMethods.Directory:
-                                    this.context.OnAction(entry, null, null);
-                                    break;
-                            }
-                        }
-                    }
-                }
+                this.UnzipCore();
+            }
+            catch (Exception ex)
+            {
+                this.context.OnError(ex);
+            }
+            finally
+            {
+                this.rangedStream.Dispose();
+                this.context.OnFinished();
             }
         }
     }

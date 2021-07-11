@@ -11,10 +11,13 @@ namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class UnzipContext
     {
-        private readonly UnzipWorker?[] workers;
+        private const int BufferSize = 4096;
+
+        private Parser? parser;
+        private readonly UnzipWorker?[] inflators;
         private readonly Func<ZippedFileEntry, bool> predicate;
         private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
-        private readonly List<Exception> caughtExceptions = new List<Exception>();
+        private readonly List<Exception> caughtExceptions = new();
         private readonly Action<List<Exception>, int> finished;
 
         private volatile int runningThreads;
@@ -23,7 +26,9 @@ namespace PowerPlayZipper.Internal.Unzip
         public readonly Encoding Encoding;
         public readonly int StreamBufferSize;
 
-        public volatile UnzipCommonRoleContext? CommonRoleContext;
+        public readonly ArrayPool<byte> BufferPool = new(BufferSize);
+        public readonly Pool<RequestInformation> RequestPool = new();
+        public readonly Spreader<RequestInformation> RequestSpreader = new();
 
         public UnzipContext(
             string zipFilePath,
@@ -38,16 +43,18 @@ namespace PowerPlayZipper.Internal.Unzip
             this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
             this.Encoding = encoding;
             this.StreamBufferSize = streamBufferSize;
+
             this.predicate = predicate;
             this.action = action;
             this.finished = finished;
-            this.CommonRoleContext = new UnzipCommonRoleContext(zipFilePath);
 
-            this.workers = new UnzipWorker[parallelCount];
-            for (var index = 0; index < this.workers.Length; index++)
+            this.inflators = new UnzipWorker[parallelCount];
+            for (var index = 0; index < this.inflators.Length; index++)
             {
-                this.workers[index] = new UnzipWorker(zipFilePath, this);
+                this.inflators[index] = new UnzipWorker(zipFilePath, this);
             }
+
+            this.parser = new Parser(this, zipFilePath);
         }
 
         public bool Evaluate(ZippedFileEntry entry)
@@ -99,48 +106,36 @@ namespace PowerPlayZipper.Internal.Unzip
             // Last one.
             if (runningThreads <= 0)
             {
-                this.finished(this.caughtExceptions, this.workers.Length);
+                this.finished(this.caughtExceptions, this.inflators.Length);
 
                 // Make GC safer.
-                for (var index = 0; index < this.workers.Length; index++)
+                for (var index = 0; index < this.inflators.Length; index++)
                 {
-                    this.workers[index] = null!;
+                    this.inflators[index] = null!;
                 }
-
-                // Close entry stream.
-                Debug.Assert(this.CommonRoleContext != null);
-                this.CommonRoleContext?.EntryStream.Dispose();
+                this.parser = null;
             }
         }
 
         public void Start()
         {
             Debug.Assert(this.runningThreads == 0);
+            Debug.Assert(this.parser != null);
 
-            this.runningThreads = this.workers.Length;
-            for (var index = 0; index < this.workers.Length; index++)
+            this.runningThreads = this.inflators.Length;
+            for (var index = 0; index < this.inflators.Length; index++)
             {
-                Debug.Assert(this.workers[index] != null);
-                this.workers[index]!.StartConsume();
+                Debug.Assert(this.inflators[index] != null);
+                this.inflators[index]!.StartConsume();
             }
+
+            this.parser!.Start();
         }
 
         public void RequestAbort()
         {
-            while (this.runningThreads >= 1)
-            {
-                // Take role context. (Spin loop)
-                var commonRoleContext = Interlocked.Exchange(ref this.CommonRoleContext, null);
-                if (commonRoleContext == null)
-                {
-                    continue;
-                }
-
-                // Request abort.
-                commonRoleContext.HeaderPosition = -1;
-                this.CommonRoleContext = commonRoleContext;
-                break;
-            }
+            this.parser?.RequestAbort();
+            this.RequestSpreader.RequestAbort();
         }
     }
 }
