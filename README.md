@@ -14,11 +14,13 @@
 
 PowerPlay Zipper is an implementation of `Lightning-Fast` Zip file compression/decompression library on .NET.
 
-* DOUBLE to QUAD faster unzipping execution than `SharpZipLib.FastZip`.
+* 3x and over faster unzipping execution than `SharpZipLib.FastZip`.
+
+Simple word for PowerPlay Zipper strategy: **Maximize multi-core parallel processing for compressing calculation**.
 
 Yes, we can easy replace PowerPlay Zipper from another zip manipulation library.
 
-## Simpler unzip (Decompression)
+## Minimum unzip (Decompression)
 
 ```csharp
 // Install NuGet "PowerPlayZipper" package.
@@ -35,7 +37,7 @@ public async Task YourUnzipTaskWithVeryLargeZipFile(
 }
 ```
 
-## TODO: Simpler zip (Compression)
+## TODO: Minimum zip (Compression)
 
 ```csharp
 // Install NuGet "PowerPlayZipper" package.
@@ -91,31 +93,31 @@ UnrollFactor=1
 
 ## dotnet/docs repo
 
-PowerPlayZipper 0.0.12 `Unzipper`:
+PowerPlayZipper 0.0.32 `Unzipper`:
 
-| Method |    Mean |   Error |  StdDev |
-|------- |--------:|--------:|--------:|
-|    Run | 10.11 s | 0.332 s | 0.908 s |
+| Method |    Mean |    Error |   StdDev |
+|------- |--------:|---------:|---------:|
+|    Run | 6.040 s | 0.1145 s | 0.1176 s |
 
 SharpZipLib 1.3.2 `FastZip.ExtractZip()`:
 
 | Method |    Mean |   Error |  StdDev |
 |------- |--------:|--------:|--------:|
-|    Run | 18.73 s | 0.221 s | 0.207 s |
+|    Run | 18.40 s | 0.154 s | 0.144 s |
 
 ## Mixed Reality Toolkit repo
 
-PowerPlayZipper 0.0.12 `Unzipper`:
+PowerPlayZipper 0.0.32 `Unzipper`:
 
-| Method |    Mean |    Error |   StdDev |  Median |
-|------- |--------:|---------:|---------:|--------:|
-|    Run | 1.124 s | 0.0852 s | 0.2274 s | 1.039 s |
+| Method |     Mean |    Error |   StdDev |
+|------- |---------:|---------:|---------:|
+|    Run | 693.7 ms | 13.53 ms | 12.66 ms |
 
 SharpZipLib 1.3.2 `FastZip.ExtractZip()`:
 
 | Method |    Mean |    Error |   StdDev |
 |------- |--------:|---------:|---------:|
-|    Run | 4.110 s | 0.0805 s | 0.0862 s |
+|    Run | 4.272 s | 0.0679 s | 0.0635 s |
 
 # Supported platforms
 
@@ -142,6 +144,7 @@ Under Apache v2.
 
 # Histroy
 
+* 0.0.32: Rewrite new generation 3 unzip code made faster to 3x (dotnet/docs).
 * 0.0.29: Added .NET CLI tool package named `ppzip`.
 * 0.0.27: Minor bug fixed.
 * 0.0.12: First NuGet package released.
