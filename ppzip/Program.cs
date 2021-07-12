@@ -64,11 +64,15 @@ namespace PowerPlayZipper
                 }
 
                 Console.WriteLine($"  Elapsed    : {result.Elapsed}");
-                Console.WriteLine($"  Files      : {result.TotalFiles} [{(double)result.TotalFiles / result.Elapsed.TotalSeconds:F2}files/sec]");
+                Console.WriteLine($"  Files      : {result.TotalFiles} [{(double)result.TotalFiles / result.Elapsed.TotalSeconds:F2} files/sec]");
                 Console.WriteLine($"  Compressed : {result.TotalCompressedSize.ToBinaryPrefixString()} [{(result.TotalCompressedSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
                 Console.WriteLine($"  Expanded   : {result.TotalOriginalSize.ToBinaryPrefixString()} [{(result.TotalOriginalSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
-                Console.WriteLine($"  Ratio      : {(double)result.TotalOriginalSize / result.TotalCompressedSize * 100:F2}%");
+                Console.WriteLine($"  Ratio      : {(double)result.TotalOriginalSize / result.TotalCompressedSize * 100:F2} %");
                 Console.WriteLine($"  Parallel   : {result.ParallelCount} [{unzipper.MaxParallelCount}]");
+                if (doVerbose)
+                {
+                    Console.WriteLine($"  Stats      : {result.InternalStats}");
+                }
 
                 if ((index + 1) < parsed.Count)
                 {

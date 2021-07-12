@@ -69,7 +69,7 @@ namespace PowerPlayZipper
             var sw = new Stopwatch();
             sw.Start();
 
-            var context = new UnzipContext(
+            var context = new Context(
                 zipFilePath,
                 this.IgnoreDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
@@ -135,7 +135,7 @@ namespace PowerPlayZipper
                         this,
                         new ProcessingEventArgs(entry, ProcessingStates.Done, entry.OriginalSize));
                 },
-                (exceptions, parallelCount) =>
+                (exceptions, parallelCount, internalStats) =>
                 {
                     if (exceptions.Count >= 1)
                     {
@@ -144,7 +144,8 @@ namespace PowerPlayZipper
                     else
                     {
                         succeeded(new ProcessedResults(
-                            totalFiles, totalCompressedSize, totalOriginalSize, sw.Elapsed, parallelCount));
+                            totalFiles, totalCompressedSize, totalOriginalSize,
+                            sw.Elapsed, parallelCount, internalStats));
                     }
                 });
 

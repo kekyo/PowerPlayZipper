@@ -14,7 +14,14 @@ namespace PowerPlayZipper.Internal
         private const int PoolSize = 32;
 
         private readonly T[]?[] pool = new T[PoolSize][];
-        private readonly Stack<T[]> floodPool = new Stack<T[]>();
+        private readonly Stack<T[]> floodPool = new();
+        
+        private volatile int returns;
+        private volatile int floods;
+        private volatile int refills;
+        private volatile int missed;
+        private volatile int put;
+        private volatile int got;
 
         public readonly int ElementSize;
 
@@ -33,6 +40,19 @@ namespace PowerPlayZipper.Internal
             }
         }
 
+        public int Returns =>
+            this.returns;
+        public int Floods =>
+            this.floods;
+        public int Refills =>
+            this.refills;
+        public int Missed =>
+            this.missed;
+        public int Put =>
+            this.put;
+        public int Got =>
+            this.got;
+
         /// <summary>
         /// Rent an array.
         /// </summary>
@@ -48,6 +68,7 @@ namespace PowerPlayZipper.Internal
                     ref this.pool[index], null);
                 if (array != null)
                 {
+                    Interlocked.Increment(ref this.got);
                     return array;
                 }
             }
@@ -60,6 +81,8 @@ namespace PowerPlayZipper.Internal
                 }
             }
 
+            Interlocked.Increment(ref this.missed);
+
             return new T[this.ElementSize];
         }
 
@@ -71,12 +94,15 @@ namespace PowerPlayZipper.Internal
         {
             Debug.Assert(array != null);
 
+            Interlocked.Increment(ref this.returns);
+
             for (var index = 0; index < this.pool.Length; index++)
             {
                 var parked = Interlocked.CompareExchange(
                     ref this.pool[index], array, null);
                 if (parked == null)
                 {
+                    Interlocked.Increment(ref this.put);
                     array = null;
                     return;
                 }
@@ -87,6 +113,8 @@ namespace PowerPlayZipper.Internal
                 this.floodPool.Push(array!);
                 array = null;
             }
+            
+            Interlocked.Increment(ref this.floods);
         }
 
         /// <summary>
@@ -102,6 +130,8 @@ namespace PowerPlayZipper.Internal
                 }
             }
 
+            Interlocked.Increment(ref this.refills);
+
             var array = new T[this.ElementSize];
 
             for (var index = 0; index < this.pool.Length; index++)
@@ -113,6 +143,14 @@ namespace PowerPlayZipper.Internal
                     return;
                 }
             }
+            
+            lock (this.floodPool)
+            {
+                this.floodPool.Push(array);
+            }
         }
+
+        public override string ToString() =>
+            $"Returns={this.Returns}, Floods={this.Floods}, Refills={this.Refills}, Got={this.Got}, Put={this.Put}, Missed={this.Missed}";
     }
 }

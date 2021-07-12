@@ -9,16 +9,16 @@ using PowerPlayZipper.Compatibility;
 
 namespace PowerPlayZipper.Internal.Unzip
 {
-    internal sealed class UnzipContext
+    internal sealed class Context
     {
-        private const int BufferSize = 4096;
+        private const int BufferSize = 16384;
 
         private Parser? parser;
         private readonly Worker?[] workers;
         private readonly Func<ZippedFileEntry, bool> predicate;
         private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
         private readonly List<Exception> caughtExceptions = new();
-        private readonly Action<List<Exception>, int> finished;
+        private readonly Action<List<Exception>, int, string> finished;
 
         private volatile int runningThreads;
 
@@ -30,7 +30,7 @@ namespace PowerPlayZipper.Internal.Unzip
         public readonly Pool<RequestInformation> RequestPool = new();
         public readonly Spreader<RequestInformation> RequestSpreader = new();
 
-        public UnzipContext(
+        public Context(
             string zipFilePath,
             bool ignoreDirectoryEntry,
             int parallelCount,
@@ -38,7 +38,7 @@ namespace PowerPlayZipper.Internal.Unzip
             int streamBufferSize,
             Func<ZippedFileEntry, bool> predicate,
             Action<ZippedFileEntry, Stream?, byte[]?> action,
-            Action<List<Exception>, int> finished)
+            Action<List<Exception>, int, string> finished)
         {
             this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
             this.Encoding = encoding;
@@ -124,7 +124,10 @@ namespace PowerPlayZipper.Internal.Unzip
             // Last one.
             if (runningThreads <= 0)
             {
-                this.finished(this.caughtExceptions, this.workers.Length);
+                this.finished(
+                    this.caughtExceptions,
+                    this.workers.Length,
+                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}]");
 
                 // Make GC safer.
                 for (var index = 0; index < this.workers.Length; index++)

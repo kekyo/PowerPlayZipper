@@ -19,12 +19,12 @@ namespace PowerPlayZipper.Internal.Unzip
             EntryIsUTF8 = 0x0800,  // bit11
         }
 
-        private readonly UnzipContext context;
+        private readonly Context context;
         private readonly ReadOnlyRangedStream rangedStream;
         private readonly byte[] streamBuffer;
         private readonly Thread thread;
 
-        public Worker(string zipFilePath, UnzipContext context)
+        public Worker(string zipFilePath, Context context)
         {
             this.context = context;
             this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);

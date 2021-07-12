@@ -11,14 +11,14 @@ namespace PowerPlayZipper.Internal.Unzip
     {
         private const int PK0304HeaderSize = 30;
 
-        private readonly UnzipContext context;
+        private readonly Context context;
         private readonly FileStream stream;
         private readonly Thread thread;
         private long bufferPosition;
         private int lastReadSize;
         private volatile bool isAborting;
 
-        public Parser(UnzipContext context, string zipFilePath)
+        public Parser(Context context, string zipFilePath)
         {
             this.context = context;
             this.stream = new FileStream(

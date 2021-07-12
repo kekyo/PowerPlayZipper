@@ -12,7 +12,7 @@ namespace PowerPlayZipper.Internal
     internal sealed class Spreader<T>
         where T : class
     {
-        private const int RequestSize = 4;
+        private const int RequestSize = 16;
 
         private enum States
         {
@@ -22,9 +22,20 @@ namespace PowerPlayZipper.Internal
         }
 
         private readonly T?[] requests = new T[RequestSize];
-        private readonly Queue<T> floodQueue = new Queue<T>();
+        private readonly Queue<T> floodQueue = new();
         private volatile int count;
         private volatile States state = States.Run;
+
+        private volatile int totalRequests;
+        private volatile int floods;
+        private long missed;
+        
+        public int Requests =>
+            this.totalRequests;
+        public int Floods =>
+            this.floods;
+        public long Missed =>
+            this.missed;
 
         public void RequestShutdown() =>
             this.state = States.Shutdown;
@@ -35,46 +46,52 @@ namespace PowerPlayZipper.Internal
         /// <summary>
         /// Request for spreading an instance.
         /// </summary>
-        /// <param name="value">Instance (will remove from argument)</param>
+        /// <param name="request">Instance (will remove from argument)</param>
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public void Request(ref T? value)
+        public void Request(ref T? request)
         {
-            Debug.Assert(value != null);
+            Debug.Assert(request != null);
 
             Interlocked.Increment(ref this.count);
+            Interlocked.Increment(ref this.totalRequests);
 
             for (var index = 0; index < this.requests.Length; index++)
             {
                 var parked = Interlocked.CompareExchange(
-                    ref this.requests[index], value, null);
+                    ref this.requests[index], request, null);
                 if (parked == null)
                 {
-                    value = null;
+                    request = null;
                     return;
                 }
             }
 
             lock (this.floodQueue)
             {
-                this.floodQueue.Enqueue(value!);
-                value = null;
+                this.floodQueue.Enqueue(request!);
+                request = null;
             }
-        }
 
+            Interlocked.Increment(ref this.floods);
+        }
+        
         private T? InternalTake()
         {
-            for (var index = 0; index < this.requests.Length; index++)
+            for (var retry = 0; retry < 4; retry++)
             {
-                var request = Interlocked.Exchange(
-                    ref this.requests[index], null);
-                if (request != null)
+                for (var index = 0; index < this.requests.Length; index++)
                 {
-                    var count = Interlocked.Decrement(ref this.count);
-                    Debug.Assert(count >= 0);
+                    var request = Interlocked.Exchange(
+                        ref this.requests[index], null);
+                    if (request != null)
+                    {
+                        var count = Interlocked.Decrement(ref this.count);
+                        Debug.Assert(count >= 0);
 
-                    return request;
+                        return request;
+                    }
                 }
             }
 
@@ -88,6 +105,8 @@ namespace PowerPlayZipper.Internal
                     return this.floodQueue.Dequeue();
                 }
             }
+
+            Interlocked.Increment(ref this.missed);
 
             return null;
         }
@@ -116,5 +135,8 @@ namespace PowerPlayZipper.Internal
 
             return null;
         }
+
+        public override string ToString() =>
+            $"Requests={this.Requests}, Floods={this.Floods}, Missed={this.Missed}";
     }
 }
