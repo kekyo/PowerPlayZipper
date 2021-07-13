@@ -5,7 +5,8 @@ namespace PowerPlayZipper.Internal.Unzip
     /// <summary>
     /// Request packet from parser to worker.
     /// </summary>
-    internal sealed class RequestInformation
+    internal sealed class RequestInformation :
+        Poolable<RequestInformation>
     {
         /// <summary>
         /// Stored first time data.

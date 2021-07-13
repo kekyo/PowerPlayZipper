@@ -1,22 +1,31 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
-    /// <summary>
-    /// Fast array instance pooler.
-    /// </summary>
-    /// <typeparam name="T">Array element type</typeparam>
-    internal sealed class ArrayPool<T>
+    internal sealed class ArrayHolder<TElement>
     {
-        private const int PoolSize = 32;
+        internal volatile ArrayHolder<TElement>? Next;
+        public readonly TElement[] Array;
 
-        private readonly T[]?[] pool = new T[PoolSize][];
-        private readonly Stack<T[]> floodPool = new();
+#if !NET20 && !NET35 && !NET40
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        internal ArrayHolder(int elementSize) =>
+            this.Array = new TElement[elementSize];
+    }
+    
+    /// <summary>
+    /// Fast array instance lock-free pooler.
+    /// </summary>
+    /// <typeparam name="TElement">Array element type</typeparam>
+    internal sealed class ArrayPool<TElement>
+    {
+        private readonly int maxPoolCount;
+        private volatile ArrayHolder<TElement>? head;
+        private volatile int poolCount;
         
-        private volatile int returns;
         private volatile int floods;
         private volatile int refills;
         private volatile int missed;
@@ -29,19 +38,35 @@ namespace PowerPlayZipper.Internal
         /// Constructor.
         /// </summary>
         /// <param name="elementSize">Array element size</param>
-        public ArrayPool(int elementSize)
+        /// <param name="preload"></param>
+        /// <param name="maxPoolCount"></param>
+        public ArrayPool(int elementSize, int preload, int maxPoolCount)
         {
-            this.ElementSize = elementSize;
+            Debug.Assert(elementSize >= 1);
+            Debug.Assert(preload >= 1);
+            Debug.Assert(maxPoolCount >= 1);
 
-            // Preload.
-            for (var index = 0; index < (PoolSize / 4); index++)
+            this.ElementSize = elementSize;
+            
+            this.maxPoolCount = maxPoolCount;
+            this.poolCount = preload;
+            
+            var value = new ArrayHolder<TElement>(elementSize);
+            this.head = value;
+
+            if (preload >= 2)
             {
-                this.pool[index] = new T[this.ElementSize];
+                for (var index = 1; index < preload; index++)
+                {
+                    var next = new ArrayHolder<TElement>(elementSize);
+                    value.Next = next;
+                    value = next;
+                }
             }
         }
 
-        public int Returns =>
-            this.returns;
+        public int Current =>
+            this.poolCount;
         public int Floods =>
             this.floods;
         public int Refills =>
@@ -60,97 +85,103 @@ namespace PowerPlayZipper.Internal
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public T[] Rent()
+        public ArrayHolder<TElement> Rent()
         {
-            for (var index = 0; index < this.pool.Length; index++)
+            while (true)
             {
-                var array = Interlocked.Exchange(
-                    ref this.pool[index], null);
-                if (array != null)
+                var currentHead = this.head;
+                
+                // Empty: Generate by optimistics.
+                if (currentHead == null)
                 {
+                    Interlocked.Increment(ref this.missed);
+                    return new ArrayHolder<TElement>(this.ElementSize);
+                }
+                
+                // CAS lock-free chaining.
+                var next = currentHead.Next;
+                var result = Interlocked.CompareExchange(ref this.head, next, currentHead);
+                if (object.ReferenceEquals(result, currentHead))
+                {
+                    var pc = Interlocked.Decrement(ref this.poolCount);
+                    Debug.Assert(pc >= 0);
                     Interlocked.Increment(ref this.got);
-                    return array;
+                    result.Next = null;
+                    return result;
                 }
             }
-
-            lock (this.floodPool)
-            {
-                if (this.floodPool.Count >= 1)
-                {
-                    return this.floodPool.Pop();
-                }
-            }
-
-            Interlocked.Increment(ref this.missed);
-
-            return new T[this.ElementSize];
         }
-
+        
         /// <summary>
         /// Return an array instance.
         /// </summary>
-        /// <param name="value">Array instance (will remove from argument)</param>
-        public void Return(ref T[]? array)
+        /// <param name="array">Array instance (will remove from argument)</param>
+#if !NET20 && !NET35 && !NET40
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        public void Return(ref ArrayHolder<TElement>? array)
         {
             Debug.Assert(array != null);
-
-            Interlocked.Increment(ref this.returns);
-
-            for (var index = 0; index < this.pool.Length; index++)
+            
+            while (this.poolCount < this.maxPoolCount)
             {
-                var parked = Interlocked.CompareExchange(
-                    ref this.pool[index], array, null);
-                if (parked == null)
+                // Set next reference.
+                var currentHead = this.head;
+                array!.Next = currentHead;
+                
+                // CAS lock-free chaining.
+                var result = Interlocked.CompareExchange(ref this.head, array, currentHead);
+                if (object.ReferenceEquals(result, currentHead))
                 {
+                    Interlocked.Increment(ref this.poolCount);
                     Interlocked.Increment(ref this.put);
                     array = null;
                     return;
                 }
             }
 
-            lock (this.floodPool)
-            {
-                this.floodPool.Push(array!);
-                array = null;
-            }
-            
             Interlocked.Increment(ref this.floods);
+            array!.Next = null;
+            array = null;
         }
+
 
         /// <summary>
         /// Refill an array if required.
         /// </summary>
-        public void Refill()
+        public void Refill(int count)
         {
-            lock (this.floodPool)
-            {
-                if (this.floodPool.Count >= 1)
-                {
-                    return;
-                }
-            }
-
-            Interlocked.Increment(ref this.refills);
-
-            var array = new T[this.ElementSize];
-
-            for (var index = 0; index < this.pool.Length; index++)
-            {
-                var parked = Interlocked.CompareExchange(
-                    ref this.pool[index], array, null);
-                if (parked == null)
-                {
-                    return;
-                }
-            }
+            // TODO: Improve: pre-construct links.
             
-            lock (this.floodPool)
+            for (var index = 0; index < count; index++)
             {
-                this.floodPool.Push(array);
+                // Optimistic: Non atomic overflow check.
+                if (this.poolCount >= this.maxPoolCount)
+                {
+                    break;
+                }
+
+                var array = new ArrayHolder<TElement>(this.ElementSize);
+
+                while (true)
+                {
+                    // Set next reference.
+                    var currentHead = this.head;
+                    array!.Next = currentHead;
+
+                    // CAS lock-free chaining.
+                    var result = Interlocked.CompareExchange(ref this.head, array, currentHead);
+                    if (object.ReferenceEquals(result, currentHead))
+                    {
+                        Interlocked.Increment(ref this.poolCount);
+                        Interlocked.Increment(ref this.refills);
+                        break;
+                    }
+                }
             }
         }
 
         public override string ToString() =>
-            $"Returns={this.Returns}, Floods={this.Floods}, Refills={this.Refills}, Got={this.Got}, Put={this.Put}, Missed={this.Missed}";
+            $"Current={this.Current}, Got={this.Got}, Put={this.Put}, Missed={this.Missed}, Floods={this.floods}, Refills={this.Refills}";
     }
 }

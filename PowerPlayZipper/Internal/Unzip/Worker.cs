@@ -52,8 +52,9 @@ namespace PowerPlayZipper.Internal.Unzip
         {
             while (true)
             {
-                // Refill array pool (on this worker thread).
-                this.context.BufferPool.Refill();
+                // Refill pools (on this worker thread).
+                this.context.BufferPool.Refill(4);
+                this.context.RequestPool.Refill(4);
 
                 // Received abort request.
                 var request = this.context.RequestSpreader.Take();
