@@ -106,7 +106,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     request.CompressedSize = compressedSize;
 
                     // Enqueue
-                    this.context.RequestSpreader.Request(ref request);
+                    this.context.RequestSpreader.Spread(ref request);
                     Debug.Assert(request == null);
 
                     // Reached buffer tail?

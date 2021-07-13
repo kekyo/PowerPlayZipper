@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -10,10 +9,8 @@ namespace PowerPlayZipper.Internal
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Spreader<T>
-        where T : class
+        where T : Poolable<T>, new()
     {
-        private const int RequestSize = 16;
-
         private enum States
         {
             Run,
@@ -21,19 +18,20 @@ namespace PowerPlayZipper.Internal
             Abort,
         }
 
-        private readonly T?[] requests = new T[RequestSize];
-        private readonly Queue<T> floodQueue = new();
-        private volatile int count;
+        private volatile T? head;
+        private volatile T? tail;
+        private volatile int queueCount;
         private volatile States state = States.Run;
 
         private volatile int totalRequests;
-        private volatile int floods;
         private long missed;
+
+        public Spreader()
+        {
+        }
         
         public int Requests =>
             this.totalRequests;
-        public int Floods =>
-            this.floods;
         public long Missed =>
             this.missed;
 
@@ -50,65 +48,68 @@ namespace PowerPlayZipper.Internal
 #if !NET20 && !NET35 && !NET40
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        public void Request(ref T? request)
+        public void Spread(ref T? request)
         {
             Debug.Assert(request != null);
 
-            Interlocked.Increment(ref this.count);
             Interlocked.Increment(ref this.totalRequests);
 
-            for (var index = 0; index < this.requests.Length; index++)
+            // Lock-free enqueue.
+            while (true)
             {
-                var parked = Interlocked.CompareExchange(
-                    ref this.requests[index], request, null);
-                if (parked == null)
+                var currentTail = this.tail;
+                if (currentTail == null)
                 {
-                    request = null;
-                    return;
-                }
-            }
-
-            lock (this.floodQueue)
-            {
-                this.floodQueue.Enqueue(request!);
-                request = null;
-            }
-
-            Interlocked.Increment(ref this.floods);
-        }
-        
-        private T? InternalTake()
-        {
-            for (var retry = 0; retry < 4; retry++)
-            {
-                for (var index = 0; index < this.requests.Length; index++)
-                {
-                    var request = Interlocked.Exchange(
-                        ref this.requests[index], null);
-                    if (request != null)
+                    var result = Interlocked.CompareExchange(ref this.head, request, null);
+                    if (result == null)
                     {
-                        var count = Interlocked.Decrement(ref this.count);
-                        Debug.Assert(count >= 0);
-
-                        return request;
+                        Interlocked.Increment(ref this.queueCount);
+                        Interlocked.CompareExchange(ref this.tail, request, null);
+                        request = null;
+                        break;
+                    }
+                }
+                else
+                {
+                    var currentTailNext = currentTail.Next;
+                    var result = Interlocked.CompareExchange(ref currentTail.Next, request, currentTailNext);
+                    if (object.ReferenceEquals(result, currentTailNext))
+                    {
+                        Interlocked.Increment(ref this.queueCount);
+                        Interlocked.CompareExchange(ref this.tail, request, currentTail);
+                        request = null;
+                        break;
                     }
                 }
             }
-
-            lock (this.floodQueue)
+        }
+        
+#if !NET20 && !NET35 && !NET40
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        private T? InternalTake()
+        {
+            while (true)
             {
-                if (this.floodQueue.Count >= 1)
+                // Empty
+                var currentHead = this.head;
+                if (currentHead == null)
                 {
-                    var count = Interlocked.Decrement(ref this.count);
-                    Debug.Assert(count >= 0);
-
-                    return this.floodQueue.Dequeue();
+                    Interlocked.Increment(ref this.missed);
+                    return null;
+                }
+            
+                // CAS lock-free chaining.
+                var next = currentHead.Next;
+                var result = Interlocked.CompareExchange(ref this.head, next, currentHead);
+                if (object.ReferenceEquals(result, currentHead))
+                {
+                    var qc = Interlocked.Decrement(ref this.queueCount);
+                    Debug.Assert(qc >= 0);
+                    result.Next = null;
+                    return result;
                 }
             }
-
-            Interlocked.Increment(ref this.missed);
-
-            return null;
         }
 
         /// <summary>
@@ -125,7 +126,7 @@ namespace PowerPlayZipper.Internal
                 }
             }
 
-            while ((this.state == States.Shutdown) && (this.count >= 1))
+            while ((this.state == States.Shutdown) && (this.queueCount >= 1))
             {
                 if (this.InternalTake() is { } request)
                 {
@@ -137,6 +138,6 @@ namespace PowerPlayZipper.Internal
         }
 
         public override string ToString() =>
-            $"Requests={this.Requests}, Floods={this.Floods}, Missed={this.Missed}";
+            $"Requests={this.Requests}, Missed={this.Missed}";
     }
 }
