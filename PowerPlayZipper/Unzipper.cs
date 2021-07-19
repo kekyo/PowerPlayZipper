@@ -54,14 +54,11 @@ namespace PowerPlayZipper
         // Unzip core
 
         private void UnzipCore(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, string> targetPathSelector,
+            IUnzippingFileFeatures fileFeatures,
             Action<ProcessedResults> succeeded,
             Action<List<Exception>> failed,
             CancellationToken cancellationToken)
         {
-            var directoryConstructor = new DirectoryConstructor();
             var totalFiles = 0;
             var totalCompressedSize = 0L;
             var totalOriginalSize = 0L;
@@ -70,15 +67,15 @@ namespace PowerPlayZipper
             sw.Start();
 
             var context = new Context(
-                zipFilePath,
+                fileFeatures.OpenForRead,
                 this.IgnoreDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
-                this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
                 this.StreamBufferSize,
-                predicate,
+                this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
+                fileFeatures.IsRequiredProcessing,
                 (entry, compressedStream, streamBuffer) =>
                 {
-                    var targetPath = targetPathSelector(entry);
+                    var targetPath = fileFeatures.GetTargetPath(entry);
                     var directoryPath = Path.GetDirectoryName(targetPath)!;
 
                     // Invoke event.
@@ -87,17 +84,14 @@ namespace PowerPlayZipper
                         new ProcessingEventArgs(entry, ProcessingStates.Begin, 0));
 
                     // Create base directory.
-                    directoryConstructor.CreateIfNotExist(directoryPath);
+                    fileFeatures.ConstructDirectory(directoryPath);
 
                     if (compressedStream != null)
                     {
                         Debug.Assert(streamBuffer != null);
 
                         // Copy stream data to target file.
-                        using (var fs = new FileStream(
-                            targetPath,
-                            FileMode.Create, FileAccess.ReadWrite, FileShare.Read,
-                            streamBuffer!.Length))
+                        using (var fs = fileFeatures.OpenForWrite(targetPath, streamBuffer!.Length))
                         {
                             var notifyCount = NotifyCount;
                             while (true)
@@ -159,15 +153,11 @@ namespace PowerPlayZipper
 
         /// <summary>
         /// </summary>
-        /// <param name="zipFilePath"></param>
-        /// <param name="predicate"></param>
-        /// <param name="targetPathSelector"></param>
+        /// <param name="fileFeatures"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public Task<ProcessedResults> UnzipAsync(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, string> targetPathSelector,
+            IUnzippingFileFeatures fileFeatures,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -175,9 +165,7 @@ namespace PowerPlayZipper
             var tcs = new TaskCompletionSource<ProcessedResults>();
 
             this.UnzipCore(
-                zipFilePath,
-                predicate,
-                targetPathSelector,
+                fileFeatures,
                 results => tcs.SetResult(results),
                 exceptions => tcs.SetException(exceptions),
                 cancellationToken);
@@ -188,22 +176,18 @@ namespace PowerPlayZipper
         public Task<ProcessedResults> UnzipAsync(
             string zipFilePath,
             string extractToBasePath,
-            Func<ZippedFileEntry, bool> predicate,
             CancellationToken cancellationToken = default) =>
             UnzipAsync(
-                zipFilePath,
-                predicate,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
                 cancellationToken);
 
         public Task<ProcessedResults> UnzipAsync(
             string zipFilePath,
             string extractToBasePath,
+            string regexPattern,
             CancellationToken cancellationToken = default) =>
             UnzipAsync(
-                zipFilePath,
-                _ => true,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #endif
 
@@ -211,9 +195,7 @@ namespace PowerPlayZipper
         // Synchronous interface
 
         private ProcessedResults SynchronousUnzip(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, string> targetPathSelector,
+            IUnzippingFileFeatures fileFeatures,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -224,9 +206,7 @@ namespace PowerPlayZipper
                 List<Exception>? exceptions = null;
 
                 this.UnzipCore(
-                    zipFilePath,
-                    predicate,
-                    targetPathSelector,
+                    fileFeatures,
                     r =>
                     {
                         results = r;
@@ -257,31 +237,14 @@ namespace PowerPlayZipper
 #if !NET20 && !NET35
         /// <summary>
         /// </summary>
-        /// <param name="zipFilePath"></param>
-        /// <param name="predicate"></param>
-        /// <param name="targetPathSelector"></param>
+        /// <param name="fileFeatures"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         ProcessedResults ISynchronousUnzipper.Unzip(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, string> targetPathSelector,
+            IUnzippingFileFeatures fileFeatures,
             CancellationToken cancellationToken) =>
             SynchronousUnzip(
-                zipFilePath,
-                predicate,
-                targetPathSelector,
-                cancellationToken);
-
-        ProcessedResults ISynchronousUnzipper.Unzip(
-            string zipFilePath,
-            string extractToBasePath,
-            Func<ZippedFileEntry, bool> predicate,
-            CancellationToken cancellationToken) =>
-            SynchronousUnzip(
-                zipFilePath,
-                predicate,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                fileFeatures,
                 cancellationToken);
 
         ProcessedResults ISynchronousUnzipper.Unzip(
@@ -289,38 +252,28 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken) =>
             SynchronousUnzip(
-                zipFilePath,
-                _ => true,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
+                cancellationToken);
+
+        ProcessedResults ISynchronousUnzipper.Unzip(
+            string zipFilePath,
+            string extractToBasePath,
+            string regexPattern,
+            CancellationToken cancellationToken) =>
+            SynchronousUnzip(
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #else
         /// <summary>
         /// </summary>
-        /// <param name="zipFilePath"></param>
-        /// <param name="predicate"></param>
-        /// <param name="targetPathSelector"></param>
+        /// <param name="fileFeatures"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         public ProcessedResults Unzip(
-            string zipFilePath,
-            Func<ZippedFileEntry, bool> predicate,
-            Func<ZippedFileEntry, string> targetPathSelector,
+            IUnzippingFileFeatures fileFeatures,
             CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
-                zipFilePath,
-                predicate,
-                targetPathSelector,
-                cancellationToken);
-
-        public ProcessedResults Unzip(
-            string zipFilePath,
-            string extractToBasePath,
-            Func<ZippedFileEntry, bool> predicate,
-            CancellationToken cancellationToken = default) =>
-            SynchronousUnzip(
-                zipFilePath,
-                predicate,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                fileFeatures,
                 cancellationToken);
 
         public ProcessedResults Unzip(
@@ -328,9 +281,16 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
-                zipFilePath,
-                _ => true,
-                entry => Path.Combine(extractToBasePath, entry.NormalizedFileName),
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
+                cancellationToken);
+
+        public ProcessedResults Unzip(
+            string zipFilePath,
+            string extractToBasePath,
+            string regexPattern,
+            CancellationToken cancellationToken = default) =>
+            SynchronousUnzip(
+                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #endif
     }

@@ -11,7 +11,7 @@ namespace PowerPlayZipper.Internal.Unzip
 {
     internal sealed class Context
     {
-        private const int BufferSize = 16384;
+        private const int ParserBufferSize = 16384;
 
         private Parser? parser;
         private readonly Worker?[] workers;
@@ -24,25 +24,23 @@ namespace PowerPlayZipper.Internal.Unzip
 
         public readonly bool IgnoreDirectoryEntry;
         public readonly Encoding Encoding;
-        public readonly int StreamBufferSize;
 
-        public readonly ArrayPool<byte> BufferPool = new(BufferSize, 16, 64);
+        public readonly ArrayPool<byte> BufferPool = new(ParserBufferSize, 16, 64);
         public readonly Pool<RequestInformation> RequestPool = new(256, 16384);
         public readonly Spreader<RequestInformation> RequestSpreader = new();
 
         public Context(
-            string zipFilePath,
+            Func<int, Stream> openForRead,
             bool ignoreDirectoryEntry,
             int parallelCount,
-            Encoding encoding,
             int streamBufferSize,
+            Encoding encoding,
             Func<ZippedFileEntry, bool> predicate,
             Action<ZippedFileEntry, Stream?, byte[]?> action,
             Action<List<Exception>, int, string> finished)
         {
             this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
             this.Encoding = encoding;
-            this.StreamBufferSize = streamBufferSize;
 
             this.predicate = predicate;
             this.action = action;
@@ -51,10 +49,10 @@ namespace PowerPlayZipper.Internal.Unzip
             this.workers = new Worker[parallelCount];
             for (var index = 0; index < this.workers.Length; index++)
             {
-                this.workers[index] = new Worker(zipFilePath, this);
+                this.workers[index] = new Worker(openForRead(streamBufferSize), streamBufferSize, this);
             }
 
-            this.parser = new Parser(this, zipFilePath);
+            this.parser = new Parser(openForRead(ParserBufferSize), this);
         }
 
         /// <summary>
