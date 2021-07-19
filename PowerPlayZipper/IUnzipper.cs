@@ -28,7 +28,7 @@ namespace PowerPlayZipper
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task<ProcessedResults> UnzipAsync(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken = default);
 
         Task<ProcessedResults> UnzipAsync(
@@ -48,7 +48,7 @@ namespace PowerPlayZipper
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         ProcessedResults Unzip(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken = default);
 
         ProcessedResults Unzip(

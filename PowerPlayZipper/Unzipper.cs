@@ -54,7 +54,7 @@ namespace PowerPlayZipper
         // Unzip core
 
         private void UnzipCore(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures features,
             Action<ProcessedResults> succeeded,
             Action<List<Exception>> failed,
             CancellationToken cancellationToken)
@@ -67,31 +67,29 @@ namespace PowerPlayZipper
             sw.Start();
 
             var context = new Context(
-                fileFeatures.OpenForRead,
+                features.OpenForReadZipFile,
                 this.IgnoreDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
                 this.StreamBufferSize,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
-                fileFeatures.IsRequiredProcessing,
+                features.IsRequiredProcessing,
                 (entry, compressedStream, streamBuffer) =>
                 {
-                    var targetPath = fileFeatures.GetTargetPath(entry);
+                    var targetPath = features.GetTargetPath(entry);
                     var directoryPath = Path.GetDirectoryName(targetPath)!;
 
                     // Invoke event.
-                    this.Processing?.Invoke(
-                        this,
-                        new ProcessingEventArgs(entry, ProcessingStates.Begin, 0));
+                    features.OnProcessing(entry, ProcessingStates.Begin, 0);
 
                     // Create base directory.
-                    fileFeatures.ConstructDirectory(directoryPath);
+                    features.CreateDirectory(directoryPath);
 
                     if (compressedStream != null)
                     {
                         Debug.Assert(streamBuffer != null);
 
                         // Copy stream data to target file.
-                        using (var fs = fileFeatures.OpenForWrite(targetPath, streamBuffer!.Length))
+                        using (var fs = features.OpenForWriteFile(targetPath, streamBuffer!.Length))
                         {
                             var notifyCount = NotifyCount;
                             while (true)
@@ -107,12 +105,7 @@ namespace PowerPlayZipper
                                 if (notifyCount-- <= 0)
                                 {
                                     // Invoke event.
-                                    if (this.Processing is { } processing)
-                                    {
-                                        processing(
-                                            this,
-                                            new ProcessingEventArgs(entry, ProcessingStates.Processing, fs.Position));
-                                    }
+                                    features.OnProcessing(entry, ProcessingStates.Processing, fs.Position);
                                     notifyCount = NotifyCount;
                                 }
                             }
@@ -125,9 +118,7 @@ namespace PowerPlayZipper
                     }
 
                     // Invoke event.
-                    this.Processing?.Invoke(
-                        this,
-                        new ProcessingEventArgs(entry, ProcessingStates.Done, entry.OriginalSize));
+                    features.OnProcessing(entry, ProcessingStates.Done, entry.OriginalSize);
                 },
                 (exceptions, parallelCount, internalStats) =>
                 {
@@ -147,6 +138,14 @@ namespace PowerPlayZipper
             context.Start();
         }
 
+        private DefaultUnzippingFeatures CreateDefaultUnzippingFeatures(
+            string zipFilePath, string extractToBasePath, string? regexPattern)
+        {
+            var features = new DefaultUnzippingFeatures(zipFilePath, extractToBasePath, regexPattern);
+            features.Processing += (s, e) => this.Processing?.Invoke(this, e);
+            return features;
+        }
+
 #if !NET20 && !NET35
         ////////////////////////////////////////////////////////////////////////
         // Asynchronous interface
@@ -157,7 +156,7 @@ namespace PowerPlayZipper
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public Task<ProcessedResults> UnzipAsync(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -178,7 +177,7 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken = default) =>
             UnzipAsync(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, null),
                 cancellationToken);
 
         public Task<ProcessedResults> UnzipAsync(
@@ -187,7 +186,7 @@ namespace PowerPlayZipper
             string regexPattern,
             CancellationToken cancellationToken = default) =>
             UnzipAsync(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #endif
 
@@ -195,7 +194,7 @@ namespace PowerPlayZipper
         // Synchronous interface
 
         private ProcessedResults SynchronousUnzip(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -241,7 +240,7 @@ namespace PowerPlayZipper
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         ProcessedResults ISynchronousUnzipper.Unzip(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken) =>
             SynchronousUnzip(
                 fileFeatures,
@@ -252,7 +251,7 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken) =>
             SynchronousUnzip(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, null),
                 cancellationToken);
 
         ProcessedResults ISynchronousUnzipper.Unzip(
@@ -261,7 +260,7 @@ namespace PowerPlayZipper
             string regexPattern,
             CancellationToken cancellationToken) =>
             SynchronousUnzip(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #else
         /// <summary>
@@ -270,7 +269,7 @@ namespace PowerPlayZipper
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         public ProcessedResults Unzip(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
                 fileFeatures,
@@ -281,7 +280,7 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, null),
                 cancellationToken);
 
         public ProcessedResults Unzip(
@@ -290,7 +289,7 @@ namespace PowerPlayZipper
             string regexPattern,
             CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
-                new DefaultUnzippingFileFeatures(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateDefaultUnzippingFeatures(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);
 #endif
     }

@@ -14,7 +14,7 @@ namespace PowerPlayZipper.Advanced
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         ProcessedResults Unzip(
-            IUnzippingFileFeatures fileFeatures,
+            IUnzippingFeatures fileFeatures,
             CancellationToken cancellationToken = default);
 
         ProcessedResults Unzip(
