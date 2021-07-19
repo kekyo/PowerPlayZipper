@@ -26,6 +26,9 @@ namespace PowerPlayZipper
         [EditorBrowsable(EditorBrowsableState.Advanced)]
         public string InternalStats { get; }
 
+        public string PrettyPrint =>
+            $"Files={this.TotalFiles}, CompressedSize={this.TotalCompressedSize.ToBinaryPrefixString()}, OriginalSize={this.TotalOriginalSize.ToBinaryPrefixString()}, Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100:F2}%, Elapsed={this.Elapsed}, CompressedDataRate={(this.TotalCompressedSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec, OriginalDataRate={(this.TotalOriginalSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec, {this.InternalStats}";
+
         public override string ToString() =>
             $"Files={this.TotalFiles}, CompressedSize={this.TotalCompressedSize.ToBinaryPrefixString()}, OriginalSize={this.TotalOriginalSize.ToBinaryPrefixString()}, Ratio={(double)this.TotalCompressedSize/this.TotalOriginalSize*100:F2}%, Elapsed={this.Elapsed}, CompressedDataRate={(this.TotalCompressedSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec, OriginalDataRate={(this.TotalOriginalSize/this.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec";
     }

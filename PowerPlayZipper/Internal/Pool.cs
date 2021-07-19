@@ -4,10 +4,12 @@ using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
-    internal abstract class Poolable<TDerived>
-        where TDerived : class, new()
+    internal abstract class Poolable
     {
-        internal volatile TDerived? Next;
+        internal volatile Poolable? Next;
+
+        internal string Id =>
+            $"Id={this.GetHashCode():x8}";
     }
     
     /// <summary>
@@ -15,10 +17,10 @@ namespace PowerPlayZipper.Internal
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Pool<T>
-        where T : Poolable<T>, new()
+        where T : Poolable, new()
     {
         private readonly int maxPoolCount;
-        private volatile T? head;
+        private volatile Poolable? head;
         private volatile int poolCount;
         
         private volatile int floods;
@@ -88,15 +90,16 @@ namespace PowerPlayZipper.Internal
                 }
 
                 // CAS lock-free chaining.
-                var next = currentHead.Next;
-                var result = Interlocked.CompareExchange(ref this.head, next, currentHead);
+                var currentHeadNext = currentHead.Next;
+                var result = Interlocked.CompareExchange(
+                    ref this.head, currentHeadNext, currentHead);
                 if (object.ReferenceEquals(result, currentHead))
                 {
                     var pc = Interlocked.Decrement(ref this.poolCount);
                     Debug.Assert(pc >= 0);
                     Interlocked.Increment(ref this.got);
                     result.Next = null;
-                    return result;
+                    return (T)result;
                 }
             }
         }
@@ -111,22 +114,32 @@ namespace PowerPlayZipper.Internal
         public void Return(ref T? value)
         {
             Debug.Assert(value != null);
-            
-            while (this.poolCount < this.maxPoolCount)
+
+            // Optimistic: Non atomic overflow check.
+            if (this.poolCount < this.maxPoolCount)
             {
-                // Set next reference.
-                var currentHead = this.head;
-                value!.Next = currentHead;
-                
-                // CAS lock-free chaining.
-                var result = Interlocked.CompareExchange(ref this.head, value, currentHead);
-                if (object.ReferenceEquals(result, currentHead))
+                Interlocked.Increment(ref this.poolCount);
+
+                do
                 {
-                    Interlocked.Increment(ref this.poolCount);
-                    Interlocked.Increment(ref this.put);
-                    value = null;
-                    return;
+                    // Set next reference.
+                    var currentHead = this.head;
+                    value!.Next = currentHead;
+
+                    // CAS lock-free chaining.
+                    var result = Interlocked.CompareExchange(
+                        ref this.head, value, currentHead);
+                    if (object.ReferenceEquals(result, currentHead))
+                    {
+                        Interlocked.Increment(ref this.put);
+                        value = null;
+                        return;
+                    }
                 }
+                // Optimistic: Non atomic overflow check.
+                while (this.poolCount < this.maxPoolCount);
+
+                Interlocked.Decrement(ref this.poolCount);
             }
 
             Interlocked.Increment(ref this.floods);
@@ -149,6 +162,8 @@ namespace PowerPlayZipper.Internal
                     break;
                 }
 
+                Interlocked.Increment(ref this.poolCount);
+
                 var value = new T();
 
                 while (true)
@@ -158,10 +173,10 @@ namespace PowerPlayZipper.Internal
                     value!.Next = currentHead;
 
                     // CAS lock-free chaining.
-                    var result = Interlocked.CompareExchange(ref this.head, value, currentHead);
+                    var result = Interlocked.CompareExchange(
+                        ref this.head, value, currentHead);
                     if (object.ReferenceEquals(result, currentHead))
                     {
-                        Interlocked.Increment(ref this.poolCount);
                         Interlocked.Increment(ref this.refills);
                         break;
                     }

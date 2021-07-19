@@ -26,8 +26,11 @@ namespace PowerPlayZipper.Internal.Unzip
                 FileMode.Open, FileAccess.Read, FileShare.Read,
                 this.context.BufferPool.ElementSize);
             this.thread = new Thread(this.ThreadEntry);
+            this.thread.Name = $"Unzipeer.Parser[{this.thread.ManagedThreadId}]";
             this.thread.IsBackground = true;
         }
+
+        public TimeSpan Elapsed { get; private set; }
 
         public void Start() =>
             this.thread.Start();
@@ -124,6 +127,9 @@ namespace PowerPlayZipper.Internal.Unzip
 
         private void ThreadEntry()
         {
+            var sw = new Stopwatch();
+            sw.Start();
+            
             try
             {
                 this.Parse();
@@ -134,6 +140,8 @@ namespace PowerPlayZipper.Internal.Unzip
             }
             finally
             {
+                this.Elapsed = sw.Elapsed;
+                
                 this.stream.Dispose();
                 this.context.OnParserFinished();
             }

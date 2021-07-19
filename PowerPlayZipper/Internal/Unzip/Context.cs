@@ -127,7 +127,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 this.finished(
                     this.caughtExceptions,
                     this.workers.Length,
-                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}]");
+                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}], ParserElapsed={this.parser!.Elapsed}");
 
                 // Make GC safer.
                 for (var index = 0; index < this.workers.Length; index++)

@@ -85,7 +85,7 @@ namespace PowerPlayZipper
         private static void WriteUsage(OptionSet options)
         {
             Console.WriteLine();
-            Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyInformationalVersion}]");
+            Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyMetadata.TargetFramework}] [{ThisAssembly.AssemblyInformationalVersion}]");
             Console.WriteLine("https://github.com/kekyo/PowerPlayZipper");
             Console.WriteLine("Copyright (c) 2021 Kouji Matsui");
             Console.WriteLine("License under Apache v2");

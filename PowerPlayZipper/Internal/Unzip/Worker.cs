@@ -30,6 +30,7 @@ namespace PowerPlayZipper.Internal.Unzip
             this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);
             this.streamBuffer = new byte[context.StreamBufferSize];
             this.thread = new Thread(this.ThreadEntry);
+            this.thread.Name = $"Unzipeer.Worker[{this.thread.ManagedThreadId}]";
             this.thread.IsBackground = true;
         }
 
