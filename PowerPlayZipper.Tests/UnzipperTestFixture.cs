@@ -2,9 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+
+#if NET35_OR_GREATER
+using Alphaleonis.Win32.Filesystem;
+#else
+using System.IO;
+#endif
 
 namespace PowerPlayZipper
 {
@@ -25,7 +30,11 @@ namespace PowerPlayZipper
         }
 
         [Test]
+#if NET35_OR_GREATER
+        public async Task Inflate()
+#else
         public async Task Compare()
+#endif
         {
             var now = DateTime.Now.ToString("mmssfff");
             var ppzBasePath = UnzipperTestCore.GetTempPath($"PPZ{now}");
@@ -47,6 +56,7 @@ namespace PowerPlayZipper
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
 
+#if !NET35_OR_GREATER   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
                 await UnzipperTestCore.UnzipBySharpZipLibAsync(this.setup!, szlBasePath);
                 var szlTime = sw.Elapsed;
 
@@ -57,13 +67,21 @@ namespace PowerPlayZipper
                 //////////////////////////////////////////////////////////
                 // Check unzipped files
 
+#if NET35_OR_GREATER
+                var ppzFiles = new HashSet<string>(
+                    Directory.EnumerateFiles(ppzBasePath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive).
+                    Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
+                var szlFiles = new HashSet<string>(
+                    Directory.EnumerateFiles(szlBasePath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive).
+                    Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
+#else
                 var ppzFiles = new HashSet<string>(
                     Directory.EnumerateFiles(ppzBasePath, "*", SearchOption.AllDirectories).
                     Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
                 var szlFiles = new HashSet<string>(
                     Directory.EnumerateFiles(szlBasePath, "*", SearchOption.AllDirectories).
                     Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
-
+#endif
                 var ppzExistBySzl = new HashSet<string>(
                     ppzFiles.Where(ppzFile => szlFiles.Contains(ppzFile)));
                 var szlExistByPpz = new HashSet<string>(
@@ -96,6 +114,7 @@ namespace PowerPlayZipper
                         }
                     }
                 });
+#endif
             }
             finally
             {

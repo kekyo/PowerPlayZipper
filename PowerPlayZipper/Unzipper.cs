@@ -59,6 +59,8 @@ namespace PowerPlayZipper
             Action<List<Exception>> failed,
             CancellationToken cancellationToken)
         {
+            var directoryConstructor = new DirectoryConstructor(features.CreateDirectoryIfNotExist);
+
             var totalFiles = 0;
             var totalCompressedSize = 0L;
             var totalOriginalSize = 0L;
@@ -82,7 +84,7 @@ namespace PowerPlayZipper
                     features.OnProcessing(entry, ProcessingStates.Begin, 0);
 
                     // Create base directory.
-                    features.CreateDirectory(directoryPath);
+                    directoryConstructor.CreateIfNotExist(directoryPath);
 
                     if (compressedStream != null)
                     {

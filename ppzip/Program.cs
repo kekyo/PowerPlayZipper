@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 using Mono.Options;
+using PowerPlayZipper.Advanced;
 using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
@@ -50,9 +51,12 @@ namespace PowerPlayZipper
                     Console.Write($"{zipFilePath}: Unzipping ...");
                 }
 
-                var result = await unzipper.
-                    UnzipAsync(zipFilePath, unzipTargetBasePath).
-                    ConfigureAwait(false);
+#if NET35_OR_GREATER
+                var features = LongPathAwareUnzippingFeatures.Create(zipFilePath, unzipTargetBasePath);
+#else
+                var features = new DefaultUnzippingFeatures(zipFilePath, unzipTargetBasePath);
+#endif
+                var result = await unzipper.UnzipAsync(features).ConfigureAwait(false);
 
                 if (doVerbose)
                 {

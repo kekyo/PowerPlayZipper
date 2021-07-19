@@ -17,6 +17,10 @@
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <PackageReference Include="AlphaFS" Version="2.2.6" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" />
   </ItemGroup>

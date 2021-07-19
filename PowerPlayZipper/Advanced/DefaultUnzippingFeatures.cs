@@ -8,31 +8,41 @@ namespace PowerPlayZipper.Advanced
 {
     public class DefaultUnzippingFeatures : IUnzippingFeatures
     {
-        private readonly DirectoryConstructor directoryConstructor = new();
-        private readonly string zipFilePath;
-        private readonly string extractToBasePath;
-        private readonly Regex? regexPattern;
+        public readonly string ZipFilePath;
+        public readonly string ExtractToBasePath;
+        public readonly Regex? RegexPattern;
 
         public DefaultUnzippingFeatures(string zipFilePath, string extractToBasePath, string? regexPattern = null)
         {
-            this.zipFilePath = zipFilePath;
-            this.extractToBasePath = extractToBasePath;
-            this.regexPattern = (regexPattern != null) ? new Regex(regexPattern, RegexOptions.Compiled) : null;
+            this.ZipFilePath = zipFilePath;
+            this.ExtractToBasePath = extractToBasePath;
+            this.RegexPattern = (regexPattern != null) ? new Regex(regexPattern, RegexOptions.Compiled) : null;
         }
 
         public event EventHandler<ProcessingEventArgs>? Processing;
 
         public virtual Stream OpenForReadZipFile(int recommendedBufferSize) =>
-            new FileStream(this.zipFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
+            new FileStream(this.ZipFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
         public virtual bool IsRequiredProcessing(ZippedFileEntry entry) =>
-            this.regexPattern?.IsMatch(entry.NormalizedFileName) ?? true;
+            this.RegexPattern?.IsMatch(entry.NormalizedFileName) ?? true;
 
         public virtual string GetTargetPath(ZippedFileEntry entry) =>
-            Path.Combine(this.extractToBasePath, entry.NormalizedFileName);
+            Path.Combine(this.ExtractToBasePath, entry.NormalizedFileName);
 
-        public virtual void CreateDirectory(string directoryPath) =>
-            this.directoryConstructor.CreateIfNotExist(directoryPath);
+        public virtual void CreateDirectoryIfNotExist(string directoryPath)
+        {
+            if (!Directory.Exists(directoryPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
+                catch
+                {
+                }
+            }
+        }
 
         public virtual Stream OpenForWriteFile(string path, int recommendedBufferSize) =>
             new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None, recommendedBufferSize);
