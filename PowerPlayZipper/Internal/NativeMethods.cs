@@ -14,11 +14,6 @@ using System.Security;
 namespace PowerPlayZipper.Internal
 {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
-    // Dummy
-    [AttributeUsage(AttributeTargets.Method)]
-    internal sealed class SuppressUnmanagedCodeSecurityAttribute : Attribute
-    { }
-
     public abstract class SafeHandleZeroOrMinusOneIsInvalid : SafeHandle
     {
         private static readonly IntPtr minusOne =
@@ -45,7 +40,9 @@ namespace PowerPlayZipper.Internal
             GenericWrite = 0x00000116
         }
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "CreateFileW", SetLastError = true)]
         public static extern SafeFileHandle Win32CreateFile(
             string path,
@@ -56,7 +53,9 @@ namespace PowerPlayZipper.Internal
             FileOptions dwFlagsAndAttributes,
             IntPtr hTemplateFile);
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "GetFullPathNameW", SetLastError = true)]
         public static extern uint Win32GetFullPathName(
             string path,
@@ -64,7 +63,9 @@ namespace PowerPlayZipper.Internal
             StringBuilder lpBuffer,
             IntPtr lpFilePart);
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "CreateDirectoryW", SetLastError = true)]
         public static extern bool Win32CreateDirectory(
             string path,
@@ -89,7 +90,9 @@ namespace PowerPlayZipper.Internal
 
         public sealed class SafeFindFileHandle : SafeHandleZeroOrMinusOneIsInvalid
         {
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
             [SuppressUnmanagedCodeSecurity]
+#endif
             [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "FindClose", SetLastError = true)]
             private static extern bool Win32FindClose(IntPtr handle);
 
@@ -101,19 +104,27 @@ namespace PowerPlayZipper.Internal
                 Win32FindClose(handle);
         }
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "FindFirstFileW", SetLastError = true)]
         public static extern SafeFindFileHandle Win32FindFirstFile(string path, out FindData findFileData);
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "FindNextFileW", SetLastError = true)]
         public static extern bool Win32FindNextFile(SafeFindFileHandle handle, ref FindData findFileData);
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "DeleteFileW", SetLastError = true)]
         public static extern bool Win32DeleteFile(string path);
 
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETSTANDARD2_1
         [SuppressUnmanagedCodeSecurity]
+#endif
         [DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "RemoveDirectoryW", SetLastError = true)]
         public static extern bool Win32RemoveDirectory(string path);
     }
