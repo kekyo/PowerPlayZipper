@@ -1,5 +1,4 @@
 ﻿using System;
-using ICSharpCode.SharpZipLib.Zip;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -25,8 +24,15 @@ namespace PowerPlayZipper
         public static ValueTask UnzipBySharpZipLibAsync(
             UnzipperTestSetup setup, string basePath)
         {
-            var fastZip = new FastZip();
+            var fastZip = new ICSharpCode.SharpZipLib.Zip.FastZip();
             fastZip.ExtractZip(setup.ZipFilePath, basePath, "");
+            return default;
+        }
+
+        public static ValueTask UnzipByZipFileAsync(
+            UnzipperTestSetup setup, string basePath)
+        {
+            System.IO.Compression.ZipFile.ExtractToDirectory(setup.ZipFilePath, basePath);
             return default;
         }
     }

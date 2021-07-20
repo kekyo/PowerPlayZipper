@@ -38,7 +38,10 @@ namespace PowerPlayZipper
         ////////////////////////////////////////////////////////////////////////
         // Properties
 
-        public bool IgnoreDirectoryEntry { get; set; }
+        public bool OverwriteIfExist { get; set; } =
+            true;
+
+        public bool IgnoreEmptyDirectoryEntry { get; set; }
 
         public Encoding DefaultFileNameEncoding { get; set; }
             
@@ -70,7 +73,7 @@ namespace PowerPlayZipper
 
             var context = new Context(
                 traits.OpenForReadZipFile,
-                this.IgnoreDirectoryEntry,
+                this.IgnoreEmptyDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
                 this.StreamBufferSize,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
@@ -93,30 +96,34 @@ namespace PowerPlayZipper
                         // Copy stream data to target file.
                         using (var fs = traits.OpenForWriteFile(targetPath, streamBuffer!.Length))
                         {
-                            var notifyCount = NotifyCount;
-                            while (true)
+                            // If opened.
+                            if (fs != null)
                             {
-                                var read = compressedStream.Read(
-                                    streamBuffer!, 0, streamBuffer!.Length);
-                                if (read == 0)
+                                var notifyCount = NotifyCount;
+                                while (true)
                                 {
-                                    break;
-                                }
-                                fs.Write(streamBuffer!, 0, read);
+                                    var read = compressedStream.Read(
+                                        streamBuffer!, 0, streamBuffer!.Length);
+                                    if (read == 0)
+                                    {
+                                        break;
+                                    }
+                                    fs.Write(streamBuffer!, 0, read);
 
-                                if (notifyCount-- <= 0)
-                                {
-                                    // Invoke event.
-                                    traits.OnProcessing(entry, ProcessingStates.Processing, fs.Position);
-                                    notifyCount = NotifyCount;
+                                    if (notifyCount-- <= 0)
+                                    {
+                                        // Invoke event.
+                                        traits.OnProcessing(entry, ProcessingStates.Processing, fs.Position);
+                                        notifyCount = NotifyCount;
+                                    }
                                 }
+                                fs.Flush();
+
+                                Interlocked.Increment(ref totalFiles);
+                                Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
+                                Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
                             }
-                            fs.Flush();
                         }
-
-                        Interlocked.Increment(ref totalFiles);
-                        Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
-                        Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
                     }
 
                     // Invoke event.
@@ -235,6 +242,50 @@ namespace PowerPlayZipper
             }
         }
 
+        /// <summary>
+        /// </summary>
+        /// <param name="traits"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>ProcessedResults</returns>
+#if !NET20 && !NET35
+        internal
+#else
+        public
+#endif
+        ProcessedResults Unzip(
+            IUnzipperTraits traits,
+            CancellationToken cancellationToken = default) =>
+            SynchronousUnzip(
+                traits,
+                cancellationToken);
+
+#if !NET20 && !NET35
+        internal
+#else
+        public
+#endif
+        ProcessedResults Unzip(
+            string zipFilePath,
+            string extractToBasePath,
+            CancellationToken cancellationToken = default) =>
+            SynchronousUnzip(
+                this.CreateBypassUnzipperTraits(zipFilePath, extractToBasePath, null),
+                cancellationToken);
+
+#if !NET20 && !NET35
+        internal
+#else
+        public
+#endif
+        ProcessedResults Unzip(
+            string zipFilePath,
+            string extractToBasePath,
+            string regexPattern,
+            CancellationToken cancellationToken = default) =>
+            SynchronousUnzip(
+                this.CreateBypassUnzipperTraits(zipFilePath, extractToBasePath, regexPattern),
+                cancellationToken);
+
 #if !NET20 && !NET35
         /// <summary>
         /// </summary>
@@ -261,35 +312,6 @@ namespace PowerPlayZipper
             string extractToBasePath,
             string regexPattern,
             CancellationToken cancellationToken) =>
-            SynchronousUnzip(
-                this.CreateBypassUnzipperTraits(zipFilePath, extractToBasePath, regexPattern),
-                cancellationToken);
-#else
-        /// <summary>
-        /// </summary>
-        /// <param name="traits"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>ProcessedResults</returns>
-        public ProcessedResults Unzip(
-            IUnzipperTraits traits,
-            CancellationToken cancellationToken = default) =>
-            SynchronousUnzip(
-                traits,
-                cancellationToken);
-
-        public ProcessedResults Unzip(
-            string zipFilePath,
-            string extractToBasePath,
-            CancellationToken cancellationToken = default) =>
-            SynchronousUnzip(
-                this.CreateBypassUnzipperTraits(zipFilePath, extractToBasePath, null),
-                cancellationToken);
-
-        public ProcessedResults Unzip(
-            string zipFilePath,
-            string extractToBasePath,
-            string regexPattern,
-            CancellationToken cancellationToken = default) =>
             SynchronousUnzip(
                 this.CreateBypassUnzipperTraits(zipFilePath, extractToBasePath, regexPattern),
                 cancellationToken);

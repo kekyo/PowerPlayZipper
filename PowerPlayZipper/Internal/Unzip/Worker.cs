@@ -165,7 +165,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 this.context.RequestPool.Return(ref request);
 
                 var isDirectory = IsDirectory(compressionMethod, fileName);
-                if (this.context.IgnoreDirectoryEntry && isDirectory)
+                if (this.context.IgnoreEmptyDirectoryEntry && isDirectory)
                 {
                     continue;
                 }
