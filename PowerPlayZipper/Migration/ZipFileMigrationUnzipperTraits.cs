@@ -15,7 +15,10 @@ namespace PowerPlayZipper.Migration
             this.overwriteFiles = overwriteFiles;
 
         public override Stream? OpenForWriteFile(string path, int recommendedBufferSize) =>
-            FileSystemAccessor.OpenForWriteFile(
-                path, overwriteFiles, recommendedBufferSize);
+            this.overwriteFiles ?
+                FileSystemAccessor.OpenForOverwriteFile(
+                    path, recommendedBufferSize) :
+                FileSystemAccessor.OpenForWriteFile(
+                    path, recommendedBufferSize);
     }
 }

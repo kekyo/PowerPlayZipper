@@ -17,9 +17,7 @@ namespace PowerPlayZipper.Migration
             FastZip.Overwrite overwrite, FastZip.ConfirmOverwriteDelegate? comfirm) :
             base(zipFilePath, extractToBasePath, filePattern)
         {
-            this.directoryPattern = (directoryPattern != null) ?
-                new Regex(directoryPattern, RegexOptions.Compiled) :
-                null;
+            this.directoryPattern = CompilePattern(directoryPattern);
             this.overwrite = overwrite;
             this.comfirm = comfirm;
         }
@@ -35,24 +33,23 @@ namespace PowerPlayZipper.Migration
             {
                 case FastZip.Overwrite.Never:
                     return FileSystemAccessor.OpenForWriteFile(
-                        path, false, recommendedBufferSize);
+                        path, recommendedBufferSize);
                 case FastZip.Overwrite.Prompt:
                     var stream = FileSystemAccessor.OpenForWriteFile(
-                        path, false, recommendedBufferSize);
+                        path, recommendedBufferSize);
                     if (stream == null)
                     {
                         if (this.comfirm?.Invoke(path) ?? false)
                         {
-                            stream = FileSystemAccessor.OpenForWriteFile(
-                                path, true, recommendedBufferSize);
+                            stream = FileSystemAccessor.OpenForOverwriteFile(
+                                path, recommendedBufferSize);
                         }
                     }
                     return stream;
                 default:
-                    return FileSystemAccessor.OpenForWriteFile(
-                        path, true, recommendedBufferSize);
+                    return FileSystemAccessor.OpenForOverwriteFile(
+                        path, recommendedBufferSize);
             }
-
         }
     }
 }

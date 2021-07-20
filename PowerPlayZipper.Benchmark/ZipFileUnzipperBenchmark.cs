@@ -9,7 +9,7 @@ namespace PowerPlayZipper
     [SimpleJob(RuntimeMoniker.Net50)]
     [PlainExporter]
     [MarkdownExporterAttribute.GitHub]
-    public class SharpZipLibUnzipperBenchmark<TArtifact>
+    public class ZipFileUnzipperBenchmark<TArtifact>
         where TArtifact : IArtifact, new()
     {
         private UnzipperTestSetup? setup;
@@ -21,23 +21,23 @@ namespace PowerPlayZipper
             return this.setup.SetUpAsync().AsTask();
         }
 
-        private string? szlBasePath;
+        private string? zfBasePath;
 
         [IterationSetup]
         public void Setup()
         {
             var now = DateTime.Now.ToString("mmssfff");
-            this.szlBasePath = UnzipperTestCore.GetTempPath($"SZL{now}");
+            this.zfBasePath = UnzipperTestCore.GetTempPath($"ZF{now}");
 
-            FileSystemAccessor.CreateDirectoryIfNotExist(this.szlBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(this.zfBasePath);
         }
 
         [IterationCleanup]
         public void Cleanup() =>
-            FileSystemAccessor.DeleteDirectoryRecursive(this.szlBasePath!);
+            FileSystemAccessor.DeleteDirectoryRecursive(this.zfBasePath!);
 
         [Benchmark]
         public Task Run() =>
-            UnzipperTestCore.UnzipBySharpZipLibAsync(this.setup!, this.szlBasePath!).AsTask();
+            UnzipperTestCore.UnzipByZipFileAsync(this.setup!, this.zfBasePath!).AsTask();
     }
 }

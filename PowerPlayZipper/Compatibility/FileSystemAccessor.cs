@@ -267,23 +267,25 @@ namespace PowerPlayZipper.Compatibility
             return new FileStream(handle, FileAccess.Write, recommendedBufferSize);
         }
 
+        public static Stream OpenForOverwriteFile(
+            string path, int recommendedBufferSize) =>
+            isOnWindows ?
+                Win32OpenForWriteFile(path, true, recommendedBufferSize)! :
+                new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, recommendedBufferSize);
+
         public static Stream? OpenForWriteFile(
-            string path, bool overwrite, int recommendedBufferSize)
+            string path, int recommendedBufferSize)
         {
             if (isOnWindows)
             {
-                return Win32OpenForWriteFile(path, overwrite, recommendedBufferSize);
+                return Win32OpenForWriteFile(path, false, recommendedBufferSize);
             }
             else
             {
                 try
                 {
                     return new FileStream(
-                        path,
-                        overwrite ? FileMode.Create : FileMode.CreateNew,
-                        FileAccess.Write,
-                        FileShare.None,
-                        recommendedBufferSize);
+                        path, FileMode.CreateNew, FileAccess.Write, FileShare.None, recommendedBufferSize);
                 }
                 catch (IOException)
                 {
@@ -327,17 +329,17 @@ namespace PowerPlayZipper.Compatibility
             string path, int recommendedBufferSize) =>
             new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
+        public static Stream? OpenForOverwriteFile(
+            string path, int recommendedBufferSize) =>
+            new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, recommendedBufferSize);
+
         public static Stream? OpenForWriteFile(
-            string path, bool overwrite, int recommendedBufferSize)
+            string path, int recommendedBufferSize)
         {
             try
             {
                 return new FileStream(
-                    path,
-                    overwrite ? FileMode.Create : FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    recommendedBufferSize);
+                    path, FileMode.CreateNew, FileAccess.Write, FileShare.None, recommendedBufferSize);
             }
             catch (IOException)
             {

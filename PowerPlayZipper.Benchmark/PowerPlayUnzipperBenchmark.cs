@@ -1,7 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
+using PowerPlayZipper.Compatibility;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace PowerPlayZipper
@@ -29,12 +29,12 @@ namespace PowerPlayZipper
             var now = DateTime.Now.ToString("mmssfff");
             this.ppzBasePath = UnzipperTestCore.GetTempPath($"PPZ{now}");
 
-            Directory.CreateDirectory(this.ppzBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(this.ppzBasePath);
         }
 
         [IterationCleanup]
         public void Cleanup() =>
-            Directory.Delete(this.ppzBasePath!, true);
+            FileSystemAccessor.DeleteDirectoryRecursive(this.ppzBasePath!);
 
         [Benchmark]
         public Task Run() =>

@@ -14,15 +14,19 @@ namespace PowerPlayZipper.Advanced
 
         public DefaultUnzipperTraits(
             string zipFilePath, string extractToBasePath,
-            string? regexPattern = null,
-            Action<ZippedFileEntry, ProcessingStates, long>? processing = null)
+            string? regexPattern = null)
         {
             this.ZipFilePath = zipFilePath;
             this.ExtractToBasePath = extractToBasePath;
-            this.RegexPattern = (regexPattern != null) ?
-                new Regex(regexPattern, RegexOptions.Compiled) :
-                null;
+            this.RegexPattern = CompilePattern(regexPattern);
         }
+
+        internal static Regex? CompilePattern(string? regexPattern) =>
+#if NET20 || NET35
+            string.IsNullOrEmpty(regexPattern) ? null : new Regex(regexPattern, RegexOptions.Compiled);
+#else
+            string.IsNullOrWhiteSpace(regexPattern) ? null : new Regex(regexPattern, RegexOptions.Compiled);
+#endif
 
         public virtual Stream OpenForReadZipFile(int recommendedBufferSize) =>
             FileSystemAccessor.OpenForReadFile(this.ZipFilePath, recommendedBufferSize);
@@ -37,7 +41,7 @@ namespace PowerPlayZipper.Advanced
             FileSystemAccessor.CreateDirectoryIfNotExist(directoryPath);
 
         public virtual Stream? OpenForWriteFile(string path, int recommendedBufferSize) =>
-            FileSystemAccessor.OpenForWriteFile(path, true, recommendedBufferSize);
+            FileSystemAccessor.OpenForOverwriteFile(path, recommendedBufferSize);
 
         public virtual void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position)
         {
