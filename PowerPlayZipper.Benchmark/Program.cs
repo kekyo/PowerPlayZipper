@@ -25,9 +25,11 @@ namespace PowerPlayZipper
         {
             BenchmarkRunner.Run<PowerPlayUnzipperBenchmark<ArtifactFromDotnetDocs>>();
             BenchmarkRunner.Run<SharpZipLibUnzipperBenchmark<ArtifactFromDotnetDocs>>();
+            BenchmarkRunner.Run<ZipFileUnzipperBenchmark<ArtifactFromDotnetDocs>>();
 
             BenchmarkRunner.Run<PowerPlayUnzipperBenchmark<ArtifactFromMixedRealityToolKit>>();
             BenchmarkRunner.Run<SharpZipLibUnzipperBenchmark<ArtifactFromMixedRealityToolKit>>();
+            BenchmarkRunner.Run<ZipFileUnzipperBenchmark<ArtifactFromMixedRealityToolKit>>();
         }
     }
 }

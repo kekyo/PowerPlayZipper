@@ -14,9 +14,9 @@
 
 PowerPlay Zipper is an implementation of `Lightning-Fast` Zip file compression/decompression library on .NET.
 
-* 3x and over faster unzipping execution than `SharpZipLib.FastZip`.
+* 7x and over faster unzipping execution than `SharpZipLib.FastZip`.
 
-Simple word for strategy: **Maximize multi-core parallel processing for compression/decompression**.
+Simple word for strategy: **Maximize multi-core parallel file compression/decompression**.
 
 Yes, we can easy replace PowerPlay Zipper from another zip manipulation library.
 
@@ -108,33 +108,35 @@ UnrollFactor=1
 
 ## dotnet/docs repo
 
-* Windows 10: 3x faster.
 * Ubuntu 20.04: 7x faster.
-
-| Windows 10 | Method |    Mean |    Error |   StdDev |
-|:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 6.040 s | 0.1145 s | 0.1176 s |
-| SharpZipLib | Run | 18.40 s | 0.154 s | 0.144 s |
+* Windows 10: 3x faster.
 
 | Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | Run | 587.9 ms | 11.67 ms | 23.30 ms |
 | SharpZipLib | Run | 4.165 s | 0.0373 s | 0.0349 s |
 
-## Mixed Reality Toolkit repo
-
-* Windows 10: 6x faster.
-* Ubuntu 20.04: 7x faster.
-
 | Windows 10 | Method |    Mean |    Error |   StdDev |
 |:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 693.7 ms | 13.53 ms | 12.66 ms |
-| SharpZipLib | Run | 4.272 s | 0.0679 s | 0.0635 s |
+| PowerPlayZipper | Run | 6.040 s | 0.1145 s | 0.1176 s |
+| SharpZipLib | Run | 18.40 s | 0.154 s | 0.144 s |
+| System.IO.Compression | Run | 19.52 s | 0.141 s | 0.132 s |
+
+## Mixed Reality Toolkit repo
+
+* Ubuntu 20.04: 7x faster.
+* Windows 10: 6x faster.
 
 | Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | Run | 283.3 ms | 5.33 ms | 5.47 ms |
 | SharpZipLib | Run | 1.994 s | 0.0056 s | 0.0047 s |
+
+| Windows 10 | Method |    Mean |    Error |   StdDev |
+|:-----|--------|--------:|---------:|---------:|
+| PowerPlayZipper | Run | 693.7 ms | 13.53 ms | 12.66 ms |
+| SharpZipLib | Run | 4.272 s | 0.0679 s | 0.0635 s |
+| System.IO.Compression | Run | 2.410 s | 0.0477 s | 0.0860 s |
 
 # Supported platforms
 
@@ -146,6 +148,28 @@ PowerPlay Zipper is made with neutral/independent any reference. See [NuGet depe
   * `netstandard13` and `netstandard16` referred `System.Threading.Thread 4.0.0`.
 * .NET Framework 4.8, 4.6.2, 4.5, 4.0, 3.5 and 2.0.
   * `net40` referred `Microsoft.Bcl.Async 1.0.168`.
+
+# Migration layer
+
+If you use `ICSharpCode.SharpZipLib.FastZip` or `System.IO.Compression.ZipFile`,
+PowerPlay Zipper produces similar interface for `FastZip` and `ZipFile` classes.
+
+```csharp
+// use PowerPlayZipper migration layer.
+using PowerPlayZipper.Migration;
+//using ICSharpCode.SharpZipLib.Zip;
+
+var fastZip = new FastZip();
+fastZip.ExtractZip("zipfile.zip", "C:\output", "");
+```
+
+```csharp
+// use PowerPlayZipper migration layer.
+using PowerPlayZipper.Migration;
+//using System.IO.Compression;
+
+ZipFile.ExtractToDirectory("zipfile.zip", "C:\output");
+```
 
 # Limitation
 
