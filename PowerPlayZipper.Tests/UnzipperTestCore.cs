@@ -18,8 +18,7 @@ namespace PowerPlayZipper
             {
                 unzipper.MaxParallelCount = pcount;
             }
-            var features = LongPathAwareUnzippingFeatures.Create(setup.ZipFilePath, basePath);
-            var result = await unzipper.UnzipAsync(features);
+            var result = await unzipper.UnzipAsync(setup.ZipFilePath, basePath);
             Console.WriteLine(result.PrettyPrint);
         }
 

@@ -1,15 +1,11 @@
 ﻿using NUnit.Framework;
+using PowerPlayZipper.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
-#if NET35_OR_GREATER
-using Alphaleonis.Win32.Filesystem;
-#else
-using System.IO;
-#endif
 
 namespace PowerPlayZipper
 {
@@ -17,8 +13,8 @@ namespace PowerPlayZipper
     public sealed class UnzipperTestFixture
     {
         private static readonly string artifactUrl =
-            //@"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
-            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
+            @"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
+            //@"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
             
         private UnzipperTestSetup? setup;
 
@@ -30,7 +26,7 @@ namespace PowerPlayZipper
         }
 
         [Test]
-#if NET35_OR_GREATER
+#if NETFRAMEWORK
         public async Task Inflate()
 #else
         public async Task Compare()
@@ -40,8 +36,8 @@ namespace PowerPlayZipper
             var ppzBasePath = UnzipperTestCore.GetTempPath($"PPZ{now}");
             var szlBasePath = UnzipperTestCore.GetTempPath($"SZL{now}");
 
-            Directory.CreateDirectory(ppzBasePath);
-            Directory.CreateDirectory(szlBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(ppzBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(szlBasePath);
 
             var sw = new Stopwatch();
 
@@ -51,12 +47,12 @@ namespace PowerPlayZipper
                 // Unzip by both libs
 
                 sw.Start();
-                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath);
+                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath, 1);
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
 
-#if !NET35_OR_GREATER   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
+#if !NETFRAMEWORK   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
                 await UnzipperTestCore.UnzipBySharpZipLibAsync(this.setup!, szlBasePath);
                 var szlTime = sw.Elapsed;
 
@@ -67,21 +63,13 @@ namespace PowerPlayZipper
                 //////////////////////////////////////////////////////////
                 // Check unzipped files
 
-#if NET35_OR_GREATER
-                var ppzFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(ppzBasePath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive).
-                    Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
-                var szlFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(szlBasePath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive).
-                    Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
-#else
                 var ppzFiles = new HashSet<string>(
                     Directory.EnumerateFiles(ppzBasePath, "*", SearchOption.AllDirectories).
                     Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
                 var szlFiles = new HashSet<string>(
                     Directory.EnumerateFiles(szlBasePath, "*", SearchOption.AllDirectories).
                     Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
-#endif
+
                 var ppzExistBySzl = new HashSet<string>(
                     ppzFiles.Where(ppzFile => szlFiles.Contains(ppzFile)));
                 var szlExistByPpz = new HashSet<string>(
@@ -118,8 +106,8 @@ namespace PowerPlayZipper
             }
             finally
             {
-                Directory.Delete(ppzBasePath, true);
-                Directory.Delete(szlBasePath, true);
+                FileSystemAccessor.DeleteDirectoryRecursive(ppzBasePath);
+                FileSystemAccessor.DeleteDirectoryRecursive(szlBasePath);
             }
         }
     }

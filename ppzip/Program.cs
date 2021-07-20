@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 using Mono.Options;
-using PowerPlayZipper.Advanced;
 using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
@@ -51,12 +50,9 @@ namespace PowerPlayZipper
                     Console.Write($"{zipFilePath}: Unzipping ...");
                 }
 
-#if NET35_OR_GREATER
-                var features = LongPathAwareUnzippingFeatures.Create(zipFilePath, unzipTargetBasePath);
-#else
-                var features = new DefaultUnzippingFeatures(zipFilePath, unzipTargetBasePath);
-#endif
-                var result = await unzipper.UnzipAsync(features).ConfigureAwait(false);
+                var result = await unzipper.
+                    UnzipAsync(zipFilePath, unzipTargetBasePath).
+                    ConfigureAwait(false);
 
                 if (doVerbose)
                 {
@@ -114,7 +110,7 @@ namespace PowerPlayZipper
                 { "u|unzip", "Unzip target files", v => doZip = false },
                 { "z|zip", "Zip target files", v => doZip = true },
                 { "o=", "Unzipped output directory path", v => unzipTargetBasePath = v },
-                { "p|parallel", "Maximum parallel count", (int v) => maxParallelCount = v },
+                { "p=", "Maximum parallel count", (int v) => maxParallelCount = v },
                 { "v|verbose", "Verbose processing", v => doVerbose = true },
                 { "s|statistics", "Show debug statistics", v => doShowDebugStatistics = true },
                 { "h|help", "Show this help", v => doHelp = true },

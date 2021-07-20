@@ -2,7 +2,7 @@
 
 namespace PowerPlayZipper.Advanced
 {
-    public interface IUnzippingFeatures
+    public interface IUnzipperTraits
     {
         Stream OpenForReadZipFile(int recommendedBufferSize);
 

@@ -24,11 +24,11 @@ namespace PowerPlayZipper
 #if !NET20 && !NET35
         /// <summary>
         /// </summary>
-        /// <param name="fileFeatures"></param>
+        /// <param name="traits"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task<ProcessedResults> UnzipAsync(
-            IUnzippingFeatures fileFeatures,
+            IUnzipperTraits traits,
             CancellationToken cancellationToken = default);
 
         Task<ProcessedResults> UnzipAsync(
@@ -44,11 +44,11 @@ namespace PowerPlayZipper
 #else
         /// <summary>
         /// </summary>
-        /// <param name="fileFeatures"></param>
+        /// <param name="traits"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
         ProcessedResults Unzip(
-            IUnzippingFeatures fileFeatures,
+            IUnzipperTraits traits,
             CancellationToken cancellationToken = default);
 
         ProcessedResults Unzip(
