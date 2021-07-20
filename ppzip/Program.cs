@@ -15,6 +15,7 @@ namespace PowerPlayZipper
             string unzipTargetBasePath,
             int? maxParallelCount,
             bool doVerbose,
+            bool doShowDebugStatistics,
             IReadOnlyList<string> parsed)
         {
             var unzipper = new Unzipper();
@@ -69,7 +70,7 @@ namespace PowerPlayZipper
                 Console.WriteLine($"  Expanded   : {result.TotalOriginalSize.ToBinaryPrefixString()} [{(result.TotalOriginalSize / result.Elapsed.TotalSeconds).ToBinaryPrefixString()}/sec]");
                 Console.WriteLine($"  Ratio      : {(double)result.TotalOriginalSize / result.TotalCompressedSize * 100:F2} %");
                 Console.WriteLine($"  Parallel   : {result.ParallelCount} [{unzipper.MaxParallelCount}]");
-                if (doVerbose)
+                if (doShowDebugStatistics)
                 {
                     Console.WriteLine($"  Stats      : {result.InternalStats}");
                 }
@@ -84,7 +85,7 @@ namespace PowerPlayZipper
         private static void WriteUsage(OptionSet options)
         {
             Console.WriteLine();
-            Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyInformationalVersion}]");
+            Console.WriteLine($"PowerPlayZipper {ThisAssembly.AssemblyVersion} [{ThisAssembly.AssemblyMetadata.TargetFramework}] [{ThisAssembly.AssemblyInformationalVersion}]");
             Console.WriteLine("https://github.com/kekyo/PowerPlayZipper");
             Console.WriteLine("Copyright (c) 2021 Kouji Matsui");
             Console.WriteLine("License under Apache v2");
@@ -101,6 +102,7 @@ namespace PowerPlayZipper
             var unzipTargetBasePath = Directory.GetCurrentDirectory();
             int? maxParallelCount = null;
             var doVerbose = false;
+            var doShowDebugStatistics = false;
             var doHelp = false;
 
             var options = new OptionSet
@@ -110,6 +112,7 @@ namespace PowerPlayZipper
                 { "o=", "Unzipped output directory path", v => unzipTargetBasePath = v },
                 { "p|parallel", "Maximum parallel count", (int v) => maxParallelCount = v },
                 { "v|verbose", "Verbose processing", v => doVerbose = true },
+                { "s|statistics", "Show debug statistics", v => doShowDebugStatistics = true },
                 { "h|help", "Show this help", v => doHelp = true },
             };
 
@@ -126,7 +129,9 @@ namespace PowerPlayZipper
                 if (doZip == false)
                 {
                     await ExecuteUnzipAsync(
-                        unzipTargetBasePath, maxParallelCount, doVerbose, parsed).
+                        unzipTargetBasePath, maxParallelCount,
+                        doVerbose, doShowDebugStatistics,
+                        parsed).
                         ConfigureAwait(false);
                 }
                 else

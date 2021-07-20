@@ -1,4 +1,5 @@
-﻿using ICSharpCode.SharpZipLib.Zip;
+﻿using System;
+using ICSharpCode.SharpZipLib.Zip;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -10,11 +11,15 @@ namespace PowerPlayZipper
             Path.Combine(Path.GetTempPath(), $"Unzipper_{suffix}");
 
         public static async ValueTask UnzipByPowerPlayZipperAsync(
-            UnzipperTestSetup setup, string basePath)
+            UnzipperTestSetup setup, string basePath, int pcount = -1)
         {
             var unzipper = new Unzipper();
-            //unzipper.MaxParallelCount = 1;
+            if (pcount >= 1)
+            {
+                unzipper.MaxParallelCount = pcount;
+            }
             var result = await unzipper.UnzipAsync(setup.ZipFilePath, basePath);
+            Console.WriteLine(result.PrettyPrint);
         }
 
         public static ValueTask UnzipBySharpZipLibAsync(

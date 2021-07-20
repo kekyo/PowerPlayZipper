@@ -1,23 +1,28 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
+    internal abstract class Poolable
+    {
+        internal volatile Poolable? Next;
+
+        internal string Id =>
+            $"Id={this.GetHashCode():x8}";
+    }
+    
     /// <summary>
-    /// Fast object instance pooler.
+    /// Fast object instance lock-free pooler.
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Pool<T>
-        where T : class, new()
+        where T : Poolable, new()
     {
-        private const int PoolSize = 32;
-
-        private readonly T?[] pool = new T[PoolSize];
-        private readonly Stack<T> floodPool = new();
+        private readonly int maxPoolCount;
+        private volatile Poolable? head;
+        private volatile int poolCount;
         
-        private volatile int returns;
         private volatile int floods;
         private volatile int refills;
         private volatile int missed;
@@ -27,17 +32,32 @@ namespace PowerPlayZipper.Internal
         /// <summary>
         /// Constructor.
         /// </summary>
-        public Pool()
+        /// <param name="preload"></param>
+        /// <param name="maxPoolCount"></param>
+        public Pool(int preload, int maxPoolCount)
         {
-            // Preload.
-            for (var index = 0; index < (PoolSize / 4); index++)
+            Debug.Assert(preload >= 1);
+            Debug.Assert(maxPoolCount >= 1);
+            
+            this.maxPoolCount = maxPoolCount;
+            this.poolCount = preload;
+            
+            var value = new T();
+            this.head = value;
+
+            if (preload >= 2)
             {
-                this.pool[index] = new T();
+                for (var index = 1; index < preload; index++)
+                {
+                    var next = new T();
+                    value.Next = next;
+                    value = next;
+                }
             }
         }
 
-        public int Returns =>
-            this.returns;
+        public int Current =>
+            this.poolCount;
         public int Floods =>
             this.floods;
         public int Refills =>
@@ -58,98 +78,113 @@ namespace PowerPlayZipper.Internal
 #endif
         public T Rent()
         {
-            for (var index = 0; index < this.pool.Length; index++)
+            while (true)
             {
-                var value = Interlocked.Exchange(
-                    ref this.pool[index], null);
-                if (value != null)
+                var currentHead = this.head;
+
+                // Empty: Generate by optimistics.
+                if (currentHead == null)
                 {
+                    Interlocked.Increment(ref this.missed);
+                    return new T();
+                }
+
+                // CAS lock-free chaining.
+                var currentHeadNext = currentHead.Next;
+                var result = Interlocked.CompareExchange(
+                    ref this.head, currentHeadNext, currentHead);
+                if (object.ReferenceEquals(result, currentHead))
+                {
+                    var pc = Interlocked.Decrement(ref this.poolCount);
+                    Debug.Assert(pc >= 0);
                     Interlocked.Increment(ref this.got);
-                    return value;
+                    result.Next = null;
+                    return (T)result;
                 }
             }
-
-            lock (this.floodPool)
-            {
-                if (this.floodPool.Count >= 1)
-                {
-                    return this.floodPool.Pop();
-                }
-            }
-
-            Interlocked.Increment(ref this.missed);
-
-            return new T();
         }
 
         /// <summary>
         /// Return an instance.
         /// </summary>
         /// <param name="value">Instance (will remove from argument)</param>
+#if !NET20 && !NET35 && !NET40
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         public void Return(ref T? value)
         {
             Debug.Assert(value != null);
 
-            Interlocked.Increment(ref this.returns);
-
-            for (var retry = 0; retry < 4; retry++)
+            // Optimistic: Non atomic overflow check.
+            if (this.poolCount < this.maxPoolCount)
             {
-                for (var index = 0; index < this.pool.Length; index++)
+                Interlocked.Increment(ref this.poolCount);
+
+                do
                 {
-                    var parked = Interlocked.CompareExchange(
-                        ref this.pool[index], value, null);
-                    if (parked == null)
+                    // Set next reference.
+                    var currentHead = this.head;
+                    value!.Next = currentHead;
+
+                    // CAS lock-free chaining.
+                    var result = Interlocked.CompareExchange(
+                        ref this.head, value, currentHead);
+                    if (object.ReferenceEquals(result, currentHead))
                     {
                         Interlocked.Increment(ref this.put);
                         value = null;
                         return;
                     }
                 }
+                // Optimistic: Non atomic overflow check.
+                while (this.poolCount < this.maxPoolCount);
+
+                Interlocked.Decrement(ref this.poolCount);
             }
 
-            lock (this.floodPool)
-            {
-                this.floodPool.Push(value!);
-                value = null;
-            }
-            
             Interlocked.Increment(ref this.floods);
+            value!.Next = null;
+            value = null;
         }
 
         /// <summary>
         /// Refill an instance if required.
         /// </summary>
-        public void Refill()
+        public void Refill(int count)
         {
-            lock (this.floodPool)
-            {
-                if (this.floodPool.Count >= 1)
-                {
-                    return;
-                }
-            }
-
-            Interlocked.Increment(ref this.refills);
-
-            var value = new T();
-
-            for (var index = 0; index < this.pool.Length; index++)
-            {
-                var parked = Interlocked.CompareExchange(
-                    ref this.pool[index], value, null);
-                if (parked == null)
-                {
-                    return;
-                }
-            }
+            // TODO: Improve: pre-construct links.
             
-            lock (this.floodPool)
+            for (var index = 0; index < count; index++)
             {
-                this.floodPool.Push(value);
+                // Optimistic: Non atomic overflow check.
+                if (this.poolCount >= this.maxPoolCount)
+                {
+                    break;
+                }
+
+                Interlocked.Increment(ref this.poolCount);
+
+                var value = new T();
+
+                while (true)
+                {
+                    // Set next reference.
+                    var currentHead = this.head;
+                    value!.Next = currentHead;
+
+                    // CAS lock-free chaining.
+                    var result = Interlocked.CompareExchange(
+                        ref this.head, value, currentHead);
+                    if (object.ReferenceEquals(result, currentHead))
+                    {
+                        Interlocked.Increment(ref this.refills);
+                        break;
+                    }
+                }
             }
         }
 
         public override string ToString() =>
-            $"Returns={this.Returns}, Floods={this.Floods}, Refills={this.Refills}, Got={this.Got}, Put={this.Put}, Missed={this.Missed}";
+            $"Current={this.Current}, Got={this.Got}, Put={this.Put}, Missed={this.Missed}, Floods={this.floods}, Refills={this.Refills}";
     }
 }

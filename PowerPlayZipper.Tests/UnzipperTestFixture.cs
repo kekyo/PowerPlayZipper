@@ -12,8 +12,9 @@ namespace PowerPlayZipper
     public sealed class UnzipperTestFixture
     {
         private static readonly string artifactUrl =
-            @"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
-
+            //@"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
+            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
+            
         private UnzipperTestSetup? setup;
 
         [SetUp]

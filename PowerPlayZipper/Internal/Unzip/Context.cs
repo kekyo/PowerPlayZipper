@@ -26,8 +26,8 @@ namespace PowerPlayZipper.Internal.Unzip
         public readonly Encoding Encoding;
         public readonly int StreamBufferSize;
 
-        public readonly ArrayPool<byte> BufferPool = new(BufferSize);
-        public readonly Pool<RequestInformation> RequestPool = new();
+        public readonly ArrayPool<byte> BufferPool = new(BufferSize, 16, 64);
+        public readonly Pool<RequestInformation> RequestPool = new(256, 16384);
         public readonly Spreader<RequestInformation> RequestSpreader = new();
 
         public Context(
@@ -127,7 +127,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 this.finished(
                     this.caughtExceptions,
                     this.workers.Length,
-                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}]");
+                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}], ParserElapsed={this.parser!.Elapsed}");
 
                 // Make GC safer.
                 for (var index = 0; index < this.workers.Length; index++)

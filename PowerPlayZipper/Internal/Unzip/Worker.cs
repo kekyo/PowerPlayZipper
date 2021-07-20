@@ -30,6 +30,7 @@ namespace PowerPlayZipper.Internal.Unzip
             this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);
             this.streamBuffer = new byte[context.StreamBufferSize];
             this.thread = new Thread(this.ThreadEntry);
+            this.thread.Name = $"Unzipeer.Worker[{this.thread.ManagedThreadId}]";
             this.thread.IsBackground = true;
         }
 
@@ -52,8 +53,9 @@ namespace PowerPlayZipper.Internal.Unzip
         {
             while (true)
             {
-                // Refill array pool (on this worker thread).
-                this.context.BufferPool.Refill();
+                // Refill pools (on this worker thread).
+                this.context.BufferPool.Refill(4);
+                this.context.RequestPool.Refill(4);
 
                 // Received abort request.
                 var request = this.context.RequestSpreader.Take();

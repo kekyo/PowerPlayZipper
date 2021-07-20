@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
 using System.Threading;
 
 namespace PowerPlayZipper.Internal
@@ -10,9 +8,23 @@ namespace PowerPlayZipper.Internal
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
     internal sealed class Spreader<T>
-        where T : class
+        where T : class, new()
     {
-        private const int RequestSize = 16;
+        private sealed class Container : Poolable
+        {
+            public volatile T? Element;
+            public volatile Container? NextContainer;
+
+            public Container()
+            {
+            }
+
+            public Container(T element) =>
+                this.Element = element;
+
+            public string PrettyPrint =>
+                $"{this.GetHashCode()} --> {this.NextContainer?.Id ?? "(null)"}";
+        }
 
         private enum States
         {
@@ -21,21 +33,25 @@ namespace PowerPlayZipper.Internal
             Abort,
         }
 
-        private readonly T?[] requests = new T[RequestSize];
-        private readonly Queue<T> floodQueue = new();
-        private volatile int count;
         private volatile States state = States.Run;
 
+        private volatile Container head;
+        private volatile Container tail;
+
         private volatile int totalRequests;
-        private volatile int floods;
-        private long missed;
-        
+        private volatile int queueCount;
+
+        public Spreader()
+        {
+            var node = new Container();
+            this.head = node;
+            this.tail = node;
+        }
+
         public int Requests =>
             this.totalRequests;
-        public int Floods =>
-            this.floods;
-        public long Missed =>
-            this.missed;
+        public long Current =>
+            this.queueCount;
 
         public void RequestShutdown() =>
             this.state = States.Shutdown;
@@ -47,68 +63,63 @@ namespace PowerPlayZipper.Internal
         /// Request for spreading an instance.
         /// </summary>
         /// <param name="request">Instance (will remove from argument)</param>
-#if !NET20 && !NET35 && !NET40
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
-        public void Request(ref T? request)
+        public void Spread(ref T? request)
         {
             Debug.Assert(request != null);
 
-            Interlocked.Increment(ref this.count);
             Interlocked.Increment(ref this.totalRequests);
+            Interlocked.Increment(ref this.queueCount);
 
-            for (var index = 0; index < this.requests.Length; index++)
+            var container = new Container(request!);
+            var baseTail = this.tail;
+            var currentTail = baseTail;
+
+            while (true)
             {
-                var parked = Interlocked.CompareExchange(
-                    ref this.requests[index], request, null);
-                if (parked == null)
+                var currentTailNext = currentTail.NextContainer;
+                if (currentTailNext == null)
                 {
-                    request = null;
-                    return;
-                }
-            }
-
-            lock (this.floodQueue)
-            {
-                this.floodQueue.Enqueue(request!);
-                request = null;
-            }
-
-            Interlocked.Increment(ref this.floods);
-        }
-        
-        private T? InternalTake()
-        {
-            for (var retry = 0; retry < 4; retry++)
-            {
-                for (var index = 0; index < this.requests.Length; index++)
-                {
-                    var request = Interlocked.Exchange(
-                        ref this.requests[index], null);
-                    if (request != null)
+                    if (Interlocked.CompareExchange(ref currentTail.NextContainer, container, null) == null)
                     {
-                        var count = Interlocked.Decrement(ref this.count);
-                        Debug.Assert(count >= 0);
-
-                        return request;
+                        if (!object.ReferenceEquals(currentTail, baseTail))
+                        {
+                            Interlocked.CompareExchange(ref this.tail, container, baseTail);
+                        }
+                        request = null;
+                        return;
                     }
                 }
-            }
-
-            lock (this.floodQueue)
-            {
-                if (this.floodQueue.Count >= 1)
+                else if (currentTail == currentTailNext)
                 {
-                    var count = Interlocked.Decrement(ref this.count);
-                    Debug.Assert(count >= 0);
-
-                    return this.floodQueue.Dequeue();
+                    var lastBaseTail = baseTail;
+                    baseTail = this.tail;
+                    if (baseTail != lastBaseTail)
+                    {
+                        currentTail = baseTail;
+                    }
+                    else
+                    {
+                        currentTail = this.head;
+                    }
+                }
+                else if (currentTail != baseTail)
+                {
+                    var lastBaseTail = baseTail;
+                    baseTail = this.tail;
+                    if (baseTail != lastBaseTail)
+                    {
+                        currentTail = baseTail;
+                    }
+                    else
+                    {
+                        currentTail = currentTailNext;
+                    }
+                }
+                else
+                {
+                    currentTail = currentTailNext;
                 }
             }
-
-            Interlocked.Increment(ref this.missed);
-
-            return null;
         }
 
         /// <summary>
@@ -117,26 +128,88 @@ namespace PowerPlayZipper.Internal
         /// <returns>Instance if succeeded</returns>
         public T? Take()
         {
-            while (this.state == States.Run)
+            while (true)
             {
-                if (this.InternalTake() is { } request)
+                var baseHead = this.head;
+                var currentHead = baseHead;
+
+                while (true)
                 {
-                    return request;
+                    var element = currentHead.Element;
+                    if (element != null)
+                    {
+                        // Could get a element?
+                        var result1 = Interlocked.CompareExchange(ref currentHead.Element, null, element);
+                        if (object.ReferenceEquals(result1, element))
+                        {
+                            // If already traversed one or few steps on the link chain.
+                            if (!object.ReferenceEquals(currentHead, baseHead))
+                            {
+                                var currentHeadNext = currentHead.NextContainer;
+                                var nextHead = currentHeadNext ?? currentHead;
+
+                                if (!object.ReferenceEquals(nextHead, baseHead))
+                                {
+                                    var result2 = Interlocked.CompareExchange(ref this.head, nextHead, baseHead);
+                                    if (object.ReferenceEquals(result2, baseHead))
+                                    {
+                                        // Make be garbage.
+                                        baseHead.NextContainer = baseHead;
+                                    }
+                                }
+                            }
+
+                            Interlocked.Decrement(ref this.queueCount);
+                            return element;
+                        }
+                    }
+                    else
+                    {
+                        var currentHeadNext = currentHead.NextContainer;
+                        if (currentHeadNext == null)
+                        {
+                            if (!object.ReferenceEquals(currentHead, baseHead))
+                            {
+                                var result = Interlocked.CompareExchange(ref this.head, currentHead, baseHead);
+                                if (object.ReferenceEquals(result, baseHead))
+                                {
+                                    // Make be garbage.
+                                    baseHead.NextContainer = baseHead;
+                                }
+                            }
+
+                            if (this.state == States.Run)
+                            {
+                                // Retry at first step.
+                                break;
+                            }
+                            else if ((this.state == States.Shutdown) && (this.queueCount >= 1))
+                            {
+                                // Retry at first step.
+                                break;
+                            }
+                            else
+                            {
+                                // Retired (by current state).
+                                return null;
+                            }
+                        }
+
+                        // Will exhaust already garbage container.
+                        if (object.ReferenceEquals(currentHead, currentHeadNext))
+                        {
+                            // Retry at first step.
+                            break;
+                        }
+
+                        // Progress next container on the linked chain.
+                        currentHead = currentHeadNext;
+                    }
                 }
             }
-
-            while ((this.state == States.Shutdown) && (this.count >= 1))
-            {
-                if (this.InternalTake() is { } request)
-                {
-                    return request;
-                }
-            }
-
-            return null;
         }
 
         public override string ToString() =>
-            $"Requests={this.Requests}, Floods={this.Floods}, Missed={this.Missed}";
+            $"Current={this.Current}, Requests={this.Requests}";
     }
 }
