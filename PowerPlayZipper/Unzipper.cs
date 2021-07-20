@@ -41,7 +41,7 @@ namespace PowerPlayZipper
         public bool OverwriteIfExist { get; set; } =
             true;
 
-        public bool IgnoreDirectoryEntry { get; set; }
+        public bool IgnoreEmptyDirectoryEntry { get; set; }
 
         public Encoding DefaultFileNameEncoding { get; set; }
             
@@ -73,7 +73,7 @@ namespace PowerPlayZipper
 
             var context = new Context(
                 traits.OpenForReadZipFile,
-                this.IgnoreDirectoryEntry,
+                this.IgnoreEmptyDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
                 this.StreamBufferSize,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),

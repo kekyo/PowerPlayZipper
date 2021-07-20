@@ -13,7 +13,7 @@ namespace PowerPlayZipper
 {
     public interface IUnzipper : IZipperProcessing
     {
-        bool IgnoreDirectoryEntry { get; }
+        bool IgnoreEmptyDirectoryEntry { get; }
 
         Encoding DefaultFileNameEncoding { get; }
 

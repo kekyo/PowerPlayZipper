@@ -19,7 +19,9 @@ namespace PowerPlayZipper.Advanced
         {
             this.ZipFilePath = zipFilePath;
             this.ExtractToBasePath = extractToBasePath;
-            this.RegexPattern = (regexPattern != null) ? new Regex(regexPattern, RegexOptions.Compiled) : null;
+            this.RegexPattern = (regexPattern != null) ?
+                new Regex(regexPattern, RegexOptions.Compiled) :
+                null;
         }
 
         public virtual Stream OpenForReadZipFile(int recommendedBufferSize) =>

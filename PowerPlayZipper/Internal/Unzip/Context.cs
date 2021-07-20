@@ -22,7 +22,7 @@ namespace PowerPlayZipper.Internal.Unzip
 
         private volatile int runningThreads;
 
-        public readonly bool IgnoreDirectoryEntry;
+        public readonly bool IgnoreEmptyDirectoryEntry;
         public readonly Encoding Encoding;
 
         public readonly ArrayPool<byte> BufferPool = new(ParserBufferSize, 16, 64);
@@ -31,7 +31,7 @@ namespace PowerPlayZipper.Internal.Unzip
 
         public Context(
             Func<int, Stream> openForRead,
-            bool ignoreDirectoryEntry,
+            bool ignoreEmptyDirectoryEntry,
             int parallelCount,
             int streamBufferSize,
             Encoding encoding,
@@ -39,7 +39,7 @@ namespace PowerPlayZipper.Internal.Unzip
             Action<ZippedFileEntry, Stream?, byte[]?> action,
             Action<List<Exception>, int, string> finished)
         {
-            this.IgnoreDirectoryEntry = ignoreDirectoryEntry;
+            this.IgnoreEmptyDirectoryEntry = ignoreEmptyDirectoryEntry;
             this.Encoding = encoding;
 
             this.predicate = predicate;
