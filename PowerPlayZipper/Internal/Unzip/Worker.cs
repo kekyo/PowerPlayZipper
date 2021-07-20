@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -24,11 +25,11 @@ namespace PowerPlayZipper.Internal.Unzip
         private readonly byte[] streamBuffer;
         private readonly Thread thread;
 
-        public Worker(string zipFilePath, Context context)
+        public Worker(Stream stream, int streamBufferSize, Context context)
         {
             this.context = context;
-            this.rangedStream = new ReadOnlyRangedStream(zipFilePath, context.StreamBufferSize);
-            this.streamBuffer = new byte[context.StreamBufferSize];
+            this.rangedStream = new ReadOnlyRangedStream(stream);
+            this.streamBuffer = new byte[streamBufferSize];
             this.thread = new Thread(this.ThreadEntry);
             this.thread.Name = $"Unzipeer.Worker[{this.thread.ManagedThreadId}]";
             this.thread.IsBackground = true;

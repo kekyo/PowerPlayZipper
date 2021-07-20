@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 using PowerPlayZipper.Compatibility;
@@ -15,8 +15,12 @@ namespace PowerPlayZipper.Internal.Unzip
     /// </summary>
     internal sealed class DirectoryConstructor
     {
+        private readonly Action<string> createIfNotExist;
         private readonly Dictionary<string, ManualResetEventSlim?> processings = new();
-        
+
+        public DirectoryConstructor(Action<string> createIfNotExist) =>
+            this.createIfNotExist = createIfNotExist;
+
         /// <summary>
         /// Create directory if not exist.
         /// </summary>
@@ -39,16 +43,7 @@ namespace PowerPlayZipper.Internal.Unzip
             {
                 try
                 {
-                    if (!Directory.Exists(directoryPath))
-                    {
-                        try
-                        {
-                            Directory.CreateDirectory(directoryPath);
-                        }
-                        catch
-                        {
-                        }
-                    }
+                    this.createIfNotExist(directoryPath);
                 }
                 finally
                 {

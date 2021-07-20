@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net462;net5.0</TargetFrameworks>
+    <TargetFrameworks>net45;net5.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>PowerPlayZipper</RootNamespace>
@@ -26,7 +26,6 @@
     <Company>Kouji Matsui (@kozy_kekyo, @kekyo2)</Company>
     <Authors>Kouji Matsui (@kozy_kekyo, @kekyo2)</Authors>
 
-    <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Images\PowerPlayZipper.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -51,7 +50,7 @@
     <ProjectReference Include="..\PowerPlayZipper\PowerPlayZipper.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="('$(TargetFramework)' == 'net462') AND ('$(MSBuildRuntimeType)' == 'Full')">
+  <ItemGroup Condition="('$(TargetFramework)' == 'net45') AND ('$(MSBuildRuntimeType)' == 'Full')">
     <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
   </ItemGroup>
 
@@ -59,7 +58,7 @@
     <None Include="..\Images\PowerPlayZipper.ico" Link="PowerPlayZipper.ico" />
   </ItemGroup>
 
-  <Target Name="ILRepack" AfterTargets="Build" Condition="('$(TargetFramework)' == 'net462') AND ('$(MSBuildRuntimeType)' == 'Full')">
+  <Target Name="ILRepack" AfterTargets="Build" Condition="('$(TargetFramework)' == 'net45') AND ('$(MSBuildRuntimeType)' == 'Full')">
     <PropertyGroup>
       <WorkingDirectory>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)</WorkingDirectory>
     </PropertyGroup>

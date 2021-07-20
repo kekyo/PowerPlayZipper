@@ -8,13 +8,13 @@ namespace PowerPlayZipper.Internal.Unzip
     /// </summary>
     internal sealed class ReadOnlyRangedStream : Stream
     {
-        private readonly FileStream stream;
+        private readonly Stream stream;
         private long initialPosition = 0;
         private long constrainedSize;
 
-        internal ReadOnlyRangedStream(string path, int streamBufferSize)
+        internal ReadOnlyRangedStream(Stream stream)
         {
-            this.stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, streamBufferSize);
+            this.stream = stream;
             this.constrainedSize = this.stream.Length;
         }
 
@@ -32,6 +32,14 @@ namespace PowerPlayZipper.Internal.Unzip
             }
             this.initialPosition = initialPosition;
             this.constrainedSize = constrainedSize;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                this.stream.Dispose();
+            }
         }
 
         /// <summary>

@@ -110,7 +110,7 @@ namespace PowerPlayZipper
                 { "u|unzip", "Unzip target files", v => doZip = false },
                 { "z|zip", "Zip target files", v => doZip = true },
                 { "o=", "Unzipped output directory path", v => unzipTargetBasePath = v },
-                { "p|parallel", "Maximum parallel count", (int v) => maxParallelCount = v },
+                { "p=", "Maximum parallel count", (int v) => maxParallelCount = v },
                 { "v|verbose", "Verbose processing", v => doVerbose = true },
                 { "s|statistics", "Show debug statistics", v => doShowDebugStatistics = true },
                 { "h|help", "Show this help", v => doHelp = true },

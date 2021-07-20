@@ -32,7 +32,6 @@
     <PackageTags>zip;unzip;fast</PackageTags>
 
     <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <ApplicationManifest>..\ppzip\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\Images\PowerPlayZipper.ico</ApplicationIcon>
 
     <PackAsTool>true</PackAsTool>
@@ -55,8 +54,6 @@
   <ItemGroup>
     <None Include="..\Images\PowerPlayZipper.100.png" Pack="true" PackagePath="/" />
     <None Include="..\Images\PowerPlayZipper.ico" Link="PowerPlayZipper.ico" Pack="false" />
-    <None Include="..\ppzip\App.config" Link="App.config" />
-    <None Include="..\ppzip\app.manifest" Link="app.manifest" />
     <Compile Include="..\ppzip\Program.cs" Link="Program.cs" />
   </ItemGroup>
     

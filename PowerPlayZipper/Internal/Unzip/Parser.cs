@@ -12,19 +12,16 @@ namespace PowerPlayZipper.Internal.Unzip
         private const int PK0304HeaderSize = 30;
 
         private readonly Context context;
-        private readonly FileStream stream;
+        private readonly Stream stream;
         private readonly Thread thread;
         private long bufferPosition;
         private int lastReadSize;
         private volatile bool isAborting;
 
-        public Parser(Context context, string zipFilePath)
+        public Parser(Stream stream, Context context)
         {
             this.context = context;
-            this.stream = new FileStream(
-                zipFilePath,
-                FileMode.Open, FileAccess.Read, FileShare.Read,
-                this.context.BufferPool.ElementSize);
+            this.stream = stream;
             this.thread = new Thread(this.ThreadEntry);
             this.thread.Name = $"Unzipeer.Parser[{this.thread.ManagedThreadId}]";
             this.thread.IsBackground = true;
