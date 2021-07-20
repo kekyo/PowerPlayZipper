@@ -13,8 +13,8 @@ namespace PowerPlayZipper
     public sealed class UnzipperTestFixture
     {
         private static readonly string artifactUrl =
-            @"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
-            //@"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
+            //@"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
+            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
             
         private UnzipperTestSetup? setup;
 
@@ -47,7 +47,7 @@ namespace PowerPlayZipper
                 // Unzip by both libs
 
                 sw.Start();
-                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath, 1);
+                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath);
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
@@ -108,6 +108,33 @@ namespace PowerPlayZipper
             {
                 FileSystemAccessor.DeleteDirectoryRecursive(ppzBasePath);
                 FileSystemAccessor.DeleteDirectoryRecursive(szlBasePath);
+            }
+        }
+
+        [Test]
+        public void Profile()
+        {
+            var now = DateTime.Now.ToString("mmssfff");
+            var ppzBasePath = UnzipperTestCore.GetTempPath($"PPZ{now}");
+
+            FileSystemAccessor.CreateDirectoryIfNotExist(ppzBasePath);
+
+            var sw = new Stopwatch();
+
+            try
+            {
+                //////////////////////////////////////////////////////////
+                // Unzip by both libs
+
+                sw.Start();
+                UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath).GetAwaiter().GetResult();
+                var ppzTime = sw.Elapsed;
+
+                Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
+            }
+            finally
+            {
+                FileSystemAccessor.DeleteDirectoryRecursive(ppzBasePath);
             }
         }
     }

@@ -94,10 +94,11 @@ namespace PowerPlayZipper
                         Debug.Assert(streamBuffer != null);
 
                         // Copy stream data to target file.
-                        using (var fs = traits.OpenForWriteFile(targetPath, streamBuffer!.Length))
+                        var fs = traits.OpenForWriteFile(targetPath, streamBuffer!.Length);
+                        // If opened.
+                        if (fs != null)
                         {
-                            // If opened.
-                            if (fs != null)
+                            try
                             {
                                 var notifyCount = NotifyCount;
                                 while (true)
@@ -122,6 +123,14 @@ namespace PowerPlayZipper
                                 Interlocked.Increment(ref totalFiles);
                                 Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
                                 Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
+                            }
+                            finally
+                            {
+#if NETSTANDARD1_3 || NETSTANDARD1_6
+                                Task.Run(() => fs.Dispose());
+#else
+                                ThreadPool.QueueUserWorkItem(_ => fs.Dispose());
+#endif
                             }
                         }
                     }
