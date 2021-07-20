@@ -1,10 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-
-#if NETFRAMEWORK || NETSTANDARD2_0_OR_GREATER
 using System.Text;
-#endif
 
 using PowerPlayZipper.Internal;
 
@@ -14,10 +11,20 @@ namespace PowerPlayZipper.Compatibility
     {
         private const int ERROR_ALREADY_EXISTS = 183;
 
-#if NETFRAMEWORK || NETSTANDARD2_0_OR_GREATER
-        private static readonly bool isOnWindows =
+#if NETFRAMEWORK
+        // On Windows or mono
+        private static readonly bool isOnWindowsNetFx =
             Environment.OSVersion.Platform == PlatformID.Win32NT;
+#elif NETSTANDARD
+        // On Windows or mono or .NET Core
+        private static readonly bool isOnWindowsNetFx =
+            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
+            RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework");
+#endif
 
+#if NETFRAMEWORK || NETSTANDARD
+        private const int NO_ERROR = 0;
+        private const int ERROR_ACCESS_DENIED = 5;
         private const int FACILITY_WIN32 = 7;
 
         private static void ThrowWin32Error(int errorCode)
@@ -69,7 +76,7 @@ namespace PowerPlayZipper.Compatibility
         public static string CombinePath(
             string path1, string path2)
         {
-            if (isOnWindows)
+            if (isOnWindowsNetFx)
             {
                 if ((path2.Length >= 1) &&
                     ((path2[0] == Path.DirectorySeparatorChar) ||
@@ -101,7 +108,7 @@ namespace PowerPlayZipper.Compatibility
         public static void CreateDirectoryIfNotExist(
             string directoryPath)
         {
-            if (isOnWindows)
+            if (isOnWindowsNetFx)
             {
                 if (string.IsNullOrEmpty(directoryPath))
                 {
@@ -129,10 +136,16 @@ namespace PowerPlayZipper.Compatibility
                     if (!NativeMethods.Win32CreateDirectory(longPath, IntPtr.Zero))
                     {
                         var errorCode = Marshal.GetLastWin32Error();
-                        if ((errorCode != 0) &&
-                            (errorCode != ERROR_ALREADY_EXISTS))
+                        switch (errorCode)
                         {
-                            ThrowWin32Error(errorCode);
+                            case NO_ERROR:
+                            case ERROR_ALREADY_EXISTS:
+                                break;
+                            case ERROR_ACCESS_DENIED when nextIndex != -1:
+                                break;
+                            default:
+                                ThrowWin32Error(errorCode);
+                                break;
                         }
                     }
 
@@ -205,7 +218,7 @@ namespace PowerPlayZipper.Compatibility
         public static void DeleteDirectoryRecursive(
             string directoryPath)
         {
-            if (isOnWindows)
+            if (isOnWindowsNetFx)
             {
                 var longPath = Win32GetLongFilePath(directoryPath);
                 Win32DeleteDirectoryRecursive(longPath);
@@ -220,7 +233,7 @@ namespace PowerPlayZipper.Compatibility
             string path, int recommendedBufferSize)
         {
             var longPath = Win32GetLongFilePath(path);
-            
+
             var handle = NativeMethods.Win32CreateFile(
                 longPath, NativeMethods.FileSystemRights.GenericRead,
                 FileShare.Read, IntPtr.Zero, FileMode.Open, FileOptions.None, IntPtr.Zero);
@@ -234,7 +247,7 @@ namespace PowerPlayZipper.Compatibility
 
         public static Stream OpenForReadFile(
             string path, int recommendedBufferSize) =>
-            isOnWindows ?
+            isOnWindowsNetFx ?
                 Win32OpenForReadFile(path, recommendedBufferSize) :
                 new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
@@ -269,14 +282,14 @@ namespace PowerPlayZipper.Compatibility
 
         public static Stream OpenForOverwriteFile(
             string path, int recommendedBufferSize) =>
-            isOnWindows ?
+            isOnWindowsNetFx ?
                 Win32OpenForWriteFile(path, true, recommendedBufferSize)! :
                 new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, recommendedBufferSize);
 
         public static Stream? OpenForWriteFile(
             string path, int recommendedBufferSize)
         {
-            if (isOnWindows)
+            if (isOnWindowsNetFx)
             {
                 return Win32OpenForWriteFile(path, false, recommendedBufferSize);
             }
