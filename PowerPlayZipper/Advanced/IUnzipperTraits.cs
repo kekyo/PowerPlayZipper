@@ -11,7 +11,7 @@ namespace PowerPlayZipper.Advanced
 
         void CreateDirectoryIfNotExist(string directoryPath);
 
-        Stream OpenForWriteFile(string path, int recommendedBufferSize);
+        Stream? OpenForWriteFile(string path, int recommendedBufferSize);
 
         void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position);
     }

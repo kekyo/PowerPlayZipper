@@ -1,8 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 #if NETFRAMEWORK || NETSTANDARD2_0_OR_GREATER
-using System.Runtime.InteropServices;
 using System.Text;
 #endif
 
@@ -12,12 +12,13 @@ namespace PowerPlayZipper.Compatibility
 {
     public static class FileSystemAccessor
     {
+        private const int ERROR_ALREADY_EXISTS = 183;
+
 #if NETFRAMEWORK || NETSTANDARD2_0_OR_GREATER
         private static readonly bool isOnWindows =
             Environment.OSVersion.Platform == PlatformID.Win32NT;
 
         private const int FACILITY_WIN32 = 7;
-        private const int ERROR_ALREADY_EXISTS = 183;
 
         private static void ThrowWin32Error(int errorCode)
         {
@@ -65,7 +66,8 @@ namespace PowerPlayZipper.Compatibility
             return fullPath.ToString();
         }
 
-        public static string CombinePath(string path1, string path2)
+        public static string CombinePath(
+            string path1, string path2)
         {
             if (isOnWindows)
             {
@@ -96,7 +98,8 @@ namespace PowerPlayZipper.Compatibility
             }
         }
 
-        public static void CreateDirectoryIfNotExist(string directoryPath)
+        public static void CreateDirectoryIfNotExist(
+            string directoryPath)
         {
             if (isOnWindows)
             {
@@ -156,7 +159,8 @@ namespace PowerPlayZipper.Compatibility
             }
         }
 
-        private static void Win32DeleteDirectoryRecursive(string directoryPath)
+        private static void Win32DeleteDirectoryRecursive(
+            string directoryPath)
         {
             using (var handle = NativeMethods.Win32FindFirstFile(
                 CombinePath(directoryPath, "*"), out var findData))
@@ -198,7 +202,8 @@ namespace PowerPlayZipper.Compatibility
             }
         }
 
-        public static void DeleteDirectoryRecursive(string directoryPath)
+        public static void DeleteDirectoryRecursive(
+            string directoryPath)
         {
             if (isOnWindows)
             {
@@ -211,7 +216,8 @@ namespace PowerPlayZipper.Compatibility
             }
         }
 
-        private static Stream Win32OpenForReadFile(string path, int recommendedBufferSize)
+        private static Stream Win32OpenForReadFile(
+            string path, int recommendedBufferSize)
         {
             var longPath = Win32GetLongFilePath(path);
             
@@ -226,12 +232,14 @@ namespace PowerPlayZipper.Compatibility
             return new FileStream(handle, FileAccess.Read, recommendedBufferSize);
         }
 
-        public static Stream OpenForReadFile(string path, int recommendedBufferSize) =>
+        public static Stream OpenForReadFile(
+            string path, int recommendedBufferSize) =>
             isOnWindows ?
                 Win32OpenForReadFile(path, recommendedBufferSize) :
                 new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
-        private static Stream Win32OpenForWriteFile(string path, int recommendedBufferSize)
+        private static Stream? Win32OpenForWriteFile(
+            string path, bool overwrite, int recommendedBufferSize)
         {
             var longPath = Win32GetLongFilePath(path);
 
@@ -240,26 +248,64 @@ namespace PowerPlayZipper.Compatibility
                 NativeMethods.FileSystemRights.GenericRead | NativeMethods.FileSystemRights.GenericWrite,
                 FileShare.None,
                 IntPtr.Zero,
-                FileMode.Create,
+                overwrite ? FileMode.Create : FileMode.CreateNew,
                 FileOptions.SequentialScan,
                 IntPtr.Zero);
             if (handle.IsInvalid)
             {
-                ThrowWin32Error();
+                var errorCode = Marshal.GetLastWin32Error();
+                if (errorCode == ERROR_ALREADY_EXISTS)
+                {
+                    return null;
+                }
+                else
+                {
+                    ThrowWin32Error(errorCode);
+                }
             }
 
             return new FileStream(handle, FileAccess.Write, recommendedBufferSize);
         }
 
-        public static Stream OpenForWriteFile(string path, int recommendedBufferSize) =>
-            isOnWindows ?
-                Win32OpenForWriteFile(path, recommendedBufferSize) :
-                new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, recommendedBufferSize);
+        public static Stream? OpenForWriteFile(
+            string path, bool overwrite, int recommendedBufferSize)
+        {
+            if (isOnWindows)
+            {
+                return Win32OpenForWriteFile(path, overwrite, recommendedBufferSize);
+            }
+            else
+            {
+                try
+                {
+                    return new FileStream(
+                        path,
+                        overwrite ? FileMode.Create : FileMode.CreateNew,
+                        FileAccess.Write,
+                        FileShare.None,
+                        recommendedBufferSize);
+                }
+                catch (IOException)
+                {
+                    var errorCode = Marshal.GetLastWin32Error();
+                    if (errorCode == ERROR_ALREADY_EXISTS)
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
 #else
-        public static string CombinePath(string path1, string path2) =>
+        public static string CombinePath(
+            string path1, string path2) =>
             Path.Combine(path1, path2);
 
-        public static void CreateDirectoryIfNotExist(string directoryPath)
+        public static void CreateDirectoryIfNotExist(
+            string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
             {
@@ -273,14 +319,39 @@ namespace PowerPlayZipper.Compatibility
             }
         }
 
-        public static void DeleteDirectoryRecursive(string directoryPath) =>
+        public static void DeleteDirectoryRecursive(
+            string directoryPath) =>
             Directory.Delete(directoryPath, true);
 
-        public static Stream OpenForReadFile(string path, int recommendedBufferSize) =>
+        public static Stream OpenForReadFile(
+            string path, int recommendedBufferSize) =>
             new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
-        public static Stream OpenForWriteFile(string path, int recommendedBufferSize) =>
-            new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None, recommendedBufferSize);
+        public static Stream? OpenForWriteFile(
+            string path, bool overwrite, int recommendedBufferSize)
+        {
+            try
+            {
+                return new FileStream(
+                    path,
+                    overwrite ? FileMode.Create : FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    recommendedBufferSize);
+            }
+            catch (IOException)
+            {
+                var errorCode = Marshal.GetLastWin32Error();
+                if (errorCode == ERROR_ALREADY_EXISTS)
+                {
+                    return null;
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
 #endif
     }
 }
