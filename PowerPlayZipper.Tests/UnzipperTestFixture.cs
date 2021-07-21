@@ -58,7 +58,7 @@ namespace PowerPlayZipper
 
                 Debug.WriteLine($"SharpZipLib.FastZip={szlTime}");
 
-                Debug.WriteLine($"Multiple={(szlTime.TotalSeconds / ppzTime.TotalSeconds):F}");
+                Debug.WriteLine($"Multiple={(szlTime.TotalSeconds / ppzTime.TotalSeconds):F2}");
 
                 //////////////////////////////////////////////////////////
                 // Check unzipped files

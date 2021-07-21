@@ -69,7 +69,7 @@ namespace PowerPlayZipper.Internal.Unzip
                         return;
                     }
 
-                    var request = this.context.RequestPool.Rent();
+                    var request = this.context.RequestPool.Pop();
                     Debug.Assert(request != null);
 
                     request!.Buffer = buffer;
@@ -81,7 +81,7 @@ namespace PowerPlayZipper.Internal.Unzip
                         buffer, bufferOffset + 26);
                     if (fileNameLength == 0)
                     {
-                        this.context.RequestPool.Return(ref request);
+                        this.context.RequestPool.Push(ref request);
                         Debug.Assert(request == null);
                         this.context.BufferPool.Return(ref rend);
                         Debug.Assert(rend == null);
@@ -106,7 +106,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     request.CompressedSize = compressedSize;
 
                     // Enqueue
-                    this.context.RequestSpreader.Spread(ref request);
+                    this.context.RequestSpreader.Enqueue(ref request);
                     Debug.Assert(request == null);
 
                     // Reached buffer tail?

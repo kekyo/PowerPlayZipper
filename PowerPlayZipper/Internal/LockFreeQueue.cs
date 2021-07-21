@@ -4,13 +4,13 @@ using System.Threading;
 namespace PowerPlayZipper.Internal
 {
     /// <summary>
-    /// Fast instance spread controller.
+    /// Fast object instance lock-free queue.
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
-    internal sealed class Spreader<T>
+    internal sealed class LockFreeQueue<T>
         where T : class, new()
     {
-        private sealed class Container : Poolable
+        private sealed class Container
         {
             public volatile T? Element;
             public volatile Container? NextContainer;
@@ -23,7 +23,12 @@ namespace PowerPlayZipper.Internal
                 this.Element = element;
 
             public string PrettyPrint =>
-                $"{this.GetHashCode()} --> {this.NextContainer?.Id ?? "(null)"}";
+                $"{this.GetHashCode()} --> {this.NextContainer?.GetHashCode().ToString() ?? "(EOC)"}";
+            public string PrettyPrintRecursive =>
+                $"{this.GetHashCode()} --> {this.NextContainer?.PrettyPrintRecursive ?? "(EOC)"}";
+
+            public override string ToString() =>
+                this.PrettyPrint;
         }
 
         private enum States
@@ -41,7 +46,7 @@ namespace PowerPlayZipper.Internal
         private volatile int totalRequests;
         private volatile int queueCount;
 
-        public Spreader()
+        public LockFreeQueue()
         {
             var node = new Container();
             this.head = node;
@@ -63,7 +68,7 @@ namespace PowerPlayZipper.Internal
         /// Request for spreading an instance.
         /// </summary>
         /// <param name="request">Instance (will remove from argument)</param>
-        public void Spread(ref T? request)
+        public void Enqueue(ref T? request)
         {
             Debug.Assert(request != null);
 
@@ -126,7 +131,7 @@ namespace PowerPlayZipper.Internal
         /// Take a requested instance.
         /// </summary>
         /// <returns>Instance if succeeded</returns>
-        public T? Take()
+        public T? Dequeue()
         {
             while (true)
             {

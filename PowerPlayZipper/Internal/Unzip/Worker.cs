@@ -59,7 +59,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 this.context.RequestPool.Refill(4);
 
                 // Received abort request.
-                var request = this.context.RequestSpreader.Take();
+                var request = this.context.RequestSpreader.Dequeue();
                 if (request == null)
                 {
                     return;
@@ -75,7 +75,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 if (!IsSupported(compressionMethod, generalPurposeBitFlag))
                 {
                     request.Clear();
-                    this.context.RequestPool.Return(ref request);
+                    this.context.RequestPool.Push(ref request);
                     continue;
                 }
 
@@ -108,7 +108,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     catch (Exception ex)
                     {
                         request.Clear();
-                        this.context.RequestPool.Return(ref request);
+                        this.context.RequestPool.Push(ref request);
                         this.context.OnError(ex);
                         continue;
                     }
@@ -140,7 +140,7 @@ namespace PowerPlayZipper.Internal.Unzip
                         {
                             // Start finishing by EOF. (Has invalid header)
                             request.Clear();
-                            this.context.RequestPool.Return(ref request);
+                            this.context.RequestPool.Push(ref request);
                             this.context.OnError(new FormatException("TODO:"));
                             continue;
                         }
@@ -151,7 +151,7 @@ namespace PowerPlayZipper.Internal.Unzip
                     catch (Exception ex)
                     {
                         request!.Clear();
-                        this.context.RequestPool.Return(ref request);
+                        this.context.RequestPool.Push(ref request);
                         this.context.OnError(ex);
                         continue;
                     }
@@ -162,7 +162,7 @@ namespace PowerPlayZipper.Internal.Unzip
                 var compressedSize = request.CompressedSize;
 
                 request!.Clear();
-                this.context.RequestPool.Return(ref request);
+                this.context.RequestPool.Push(ref request);
 
                 var isDirectory = IsDirectory(compressionMethod, fileName);
                 if (this.context.IgnoreEmptyDirectoryEntry && isDirectory)
@@ -223,7 +223,7 @@ namespace PowerPlayZipper.Internal.Unzip
             finally
             {
                 this.rangedStream.Dispose();
-                this.context.OnFinished();
+                this.context.OnWorkerFinished();
             }
         }
     }

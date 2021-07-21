@@ -78,7 +78,7 @@ namespace PowerPlayZipper
                 this.StreamBufferSize,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
                 traits.IsRequiredProcessing,
-                (entry, compressedStream, streamBuffer) =>
+                (entry, compressedStream, streamBuffer, finalize) =>
                 {
                     var targetPath = traits.GetTargetPath(entry);
                     var directoryPath = Path.GetDirectoryName(targetPath)!;
@@ -126,11 +126,7 @@ namespace PowerPlayZipper
                             }
                             finally
                             {
-#if NETSTANDARD1_3 || NETSTANDARD1_6
-                                Task.Run(() => fs.Dispose());
-#else
-                                ThreadPool.QueueUserWorkItem(_ => fs.Dispose());
-#endif
+                                finalize(fs);
                             }
                         }
                     }

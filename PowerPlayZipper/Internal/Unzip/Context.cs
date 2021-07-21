@@ -16,18 +16,21 @@ namespace PowerPlayZipper.Internal.Unzip
         private Parser? parser;
         private readonly Worker?[] workers;
         private readonly Func<ZippedFileEntry, bool> predicate;
-        private readonly Action<ZippedFileEntry, Stream?, byte[]?> action;
+        private readonly Action<ZippedFileEntry, Stream?, byte[]?, Action<Stream>> action;
         private readonly List<Exception> caughtExceptions = new();
         private readonly Action<List<Exception>, int, string> finished;
 
         private volatile int runningThreads;
+        private volatile int finalizingCount;
+        private volatile int finalizedCount;
+        private TimeSpan totalFinalizingElapsed;
 
         public readonly bool IgnoreEmptyDirectoryEntry;
         public readonly Encoding Encoding;
 
         public readonly ArrayPool<byte> BufferPool = new(ParserBufferSize, 16, 64);
-        public readonly Pool<RequestInformation> RequestPool = new(256, 16384);
-        public readonly Spreader<RequestInformation> RequestSpreader = new();
+        public readonly LockFreeStack<RequestInformation> RequestPool = new(256, 16384);
+        public readonly LockFreeQueue<RequestInformation> RequestSpreader = new();
 
         public Context(
             Func<int, Stream> openForRead,
@@ -36,7 +39,7 @@ namespace PowerPlayZipper.Internal.Unzip
             int streamBufferSize,
             Encoding encoding,
             Func<ZippedFileEntry, bool> predicate,
-            Action<ZippedFileEntry, Stream?, byte[]?> action,
+            Action<ZippedFileEntry, Stream?, byte[]?, Action<Stream>> action,
             Action<List<Exception>, int, string> finished)
         {
             this.IgnoreEmptyDirectoryEntry = ignoreEmptyDirectoryEntry;
@@ -88,7 +91,33 @@ namespace PowerPlayZipper.Internal.Unzip
         {
             try
             {
-                this.action(entry, compressedStream, streamBuffer);
+                this.action(
+                    entry,
+                    compressedStream,
+                    streamBuffer,
+                    stream =>
+                    {
+                        Interlocked.Increment(ref this.finalizingCount);
+                        ThreadPool.QueueUserWorkItem(_ =>
+                        {
+                            var sw = new Stopwatch();
+                            sw.Start();
+                            try
+                            {
+                                stream.Dispose();
+                            }
+                            finally
+                            {
+                                lock (this)
+                                {
+                                    this.totalFinalizingElapsed += sw.Elapsed;
+                                }
+                                var count = Interlocked.Decrement(ref this.finalizingCount);
+                                Debug.Assert(count >= 0);
+                                Interlocked.Increment(ref this.finalizedCount);
+                            }
+                        });
+                    });
             }
             catch (Exception ex)
             {
@@ -114,7 +143,7 @@ namespace PowerPlayZipper.Internal.Unzip
         /// <summary>
         /// Mark finished a worker.
         /// </summary>
-        internal void OnFinished()
+        internal void OnWorkerFinished()
         {
             var runningThreads = Interlocked.Decrement(ref this.runningThreads);
             Debug.Assert(runningThreads >= 0);
@@ -122,10 +151,16 @@ namespace PowerPlayZipper.Internal.Unzip
             // Last one.
             if (runningThreads <= 0)
             {
+                // Dirty HACK.
+                while (this.finalizingCount >= 1)
+                {
+                    Thread.Sleep(100);
+                }
+
                 this.finished(
                     this.caughtExceptions,
                     this.workers.Length,
-                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}], ParserElapsed={this.parser!.Elapsed}");
+                    $"BufferPool=[{this.BufferPool}], RequestPool=[{this.RequestPool}], Spreader=[{this.RequestSpreader}], ParserElapsed={this.parser!.Elapsed}, AverageFinalize={TimeSpan.FromMilliseconds(this.totalFinalizingElapsed.TotalMilliseconds / this.finalizedCount)}");
 
                 // Make GC safer.
                 for (var index = 0; index < this.workers.Length; index++)
