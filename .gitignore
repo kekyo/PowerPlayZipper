@@ -359,3 +359,5 @@ MigrationBackup/
 *.vcxproj.filters
 
 .idea/
+
+launchSettings.json
