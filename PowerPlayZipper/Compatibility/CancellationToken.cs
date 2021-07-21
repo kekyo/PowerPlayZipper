@@ -7,10 +7,12 @@ namespace PowerPlayZipper.Compatibility
     {
         public void Register(Action callback)
         {
+            // TODO:
         }
 
         public void ThrowIfCancellationRequested()
         {
+            // TODO:
         }
     }
 #endif

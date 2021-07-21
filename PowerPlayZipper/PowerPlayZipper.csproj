@@ -5,7 +5,9 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 
-    <DebugType>portable</DebugType>
+    <DebugType Condition="'$(Configuration)' == 'Debug'">full</DebugType>
+    <DebugType Condition="('$(Configuration)' == 'Release') AND ('$(TargetFrameworkIdentifier)' == '.NETFramework')">pdbonly</DebugType>
+    <DebugType Condition="('$(Configuration)' == 'Release') AND ('$(TargetFrameworkIdentifier)' != '.NETFramework')">portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <Deterministic>true</Deterministic>

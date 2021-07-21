@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -26,8 +26,8 @@ namespace PowerPlayZipper.Internal.Unzip
         public readonly Encoding Encoding;
 
         public readonly ArrayPool<byte> BufferPool = new(ParserBufferSize, 16, 64);
-        public readonly Pool<RequestInformation> RequestPool = new(256, 16384);
-        public readonly Spreader<RequestInformation> RequestSpreader = new();
+        public readonly LockFreeStack<RequestInformation> RequestPool = new(256, 16384);
+        public readonly LockFreeQueue<RequestInformation> RequestSpreader = new();
 
         public Context(
             Func<int, Stream> openForRead,
@@ -114,7 +114,7 @@ namespace PowerPlayZipper.Internal.Unzip
         /// <summary>
         /// Mark finished a worker.
         /// </summary>
-        internal void OnFinished()
+        internal void OnWorkerFinished()
         {
             var runningThreads = Interlocked.Decrement(ref this.runningThreads);
             Debug.Assert(runningThreads >= 0);

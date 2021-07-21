@@ -4,23 +4,28 @@ using System.Threading;
 
 namespace PowerPlayZipper.Internal
 {
-    internal abstract class Poolable
+    internal abstract class StackableElement
     {
-        internal volatile Poolable? Next;
+        internal volatile StackableElement? Next;
 
-        internal string Id =>
-            $"Id={this.GetHashCode():x8}";
+        public string PrettyPrint =>
+            $"{this.GetHashCode()} --> {this.Next?.GetHashCode().ToString() ?? "(EOE)"}";
+        public string PrettyPrintRecursive =>
+            $"{this.GetHashCode()} --> {this.Next?.PrettyPrintRecursive ?? "(EOE)"}";
+
+        public override string ToString() =>
+            this.PrettyPrint;
     }
-    
+
     /// <summary>
-    /// Fast object instance lock-free pooler.
+    /// Fast object instance lock-free stack.
     /// </summary>
     /// <typeparam name="T">Instance type</typeparam>
-    internal sealed class Pool<T>
-        where T : Poolable, new()
+    internal sealed class LockFreeStack<T>
+        where T : StackableElement, new()
     {
         private readonly int maxPoolCount;
-        private volatile Poolable? head;
+        private volatile StackableElement? head;
         private volatile int poolCount;
         
         private volatile int floods;
@@ -34,7 +39,7 @@ namespace PowerPlayZipper.Internal
         /// </summary>
         /// <param name="preload"></param>
         /// <param name="maxPoolCount"></param>
-        public Pool(int preload, int maxPoolCount)
+        public LockFreeStack(int preload, int maxPoolCount)
         {
             Debug.Assert(preload >= 1);
             Debug.Assert(maxPoolCount >= 1);
@@ -73,10 +78,7 @@ namespace PowerPlayZipper.Internal
         /// Rent an instance.
         /// </summary>
         /// <returns>Instance</returns>
-#if !NET20 && !NET35 && !NET40
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
-        public T Rent()
+        public T Pop()
         {
             while (true)
             {
@@ -108,10 +110,7 @@ namespace PowerPlayZipper.Internal
         /// Return an instance.
         /// </summary>
         /// <param name="value">Instance (will remove from argument)</param>
-#if !NET20 && !NET35 && !NET40
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
-        public void Return(ref T? value)
+        public void Push(ref T? value)
         {
             Debug.Assert(value != null);
 
