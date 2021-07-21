@@ -1,8 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
-using PowerPlayZipper.Compatibility;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
 {
