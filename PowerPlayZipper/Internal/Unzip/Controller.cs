@@ -93,7 +93,7 @@ namespace PowerPlayZipper.Internal.Unzip
             try
             {
                 var targetPath = this.traits.GetTargetPath(entry);
-                var directoryPath = Path.GetDirectoryName(targetPath)!;
+                var directoryPath = this.traits.GetDirectoryName(targetPath)!;
 
                 // Invoke event.
                 this.traits.OnProcessing(entry, ProcessingStates.Begin, 0);

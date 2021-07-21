@@ -51,6 +51,9 @@ namespace PowerPlayZipper.Advanced
         public virtual string GetTargetPath(ZippedFileEntry entry) =>
             FileSystemAccessor.CombinePath(this.ExtractToBasePath, entry.NormalizedFileName);
 
+        public virtual string GetDirectoryName(string path) =>
+            FileSystemAccessor.GetDirectoryName(path);
+
         public virtual void CreateDirectoryIfNotExist(string directoryPath) =>
             FileSystemAccessor.CreateDirectoryIfNotExist(directoryPath);
 

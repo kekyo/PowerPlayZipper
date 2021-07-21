@@ -9,7 +9,10 @@ namespace PowerPlayZipper.Advanced
         Stream OpenForReadZipFile(int recommendedBufferSize);
 
         bool IsRequiredProcessing(ZippedFileEntry entry);
+
         string GetTargetPath(ZippedFileEntry entry);
+
+        string GetDirectoryName(string path);
 
         void CreateDirectoryIfNotExist(string directoryPath);
 

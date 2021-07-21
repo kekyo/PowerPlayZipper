@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ppzip": {
+      "commandName": "Project",
+      "commandLineArgs": "-u -s -p=1 7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip"
+    }
+  }
+}

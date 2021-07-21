@@ -105,6 +105,31 @@ namespace PowerPlayZipper.Utilities
             }
         }
 
+        public static string GetDirectoryName(string path)
+        {
+            if (isOnWindowsNetFx)
+            {
+                var index = path.LastIndexOfAny(
+                    new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+                if (index >= 0)
+                {
+                    return path.Substring(0, index);
+                }
+
+                var indexd = path.IndexOf(Path.VolumeSeparatorChar);
+                if (indexd >= 0)
+                {
+                    return path.Substring(0, indexd);
+                }
+
+                return string.Empty;
+            }
+            else
+            {
+                return Path.GetDirectoryName(path)!;
+            }
+        }
+
         public static void CreateDirectoryIfNotExist(
             string directoryPath)
         {
@@ -318,6 +343,9 @@ namespace PowerPlayZipper.Utilities
         public static string CombinePath(
             string path1, string path2) =>
             Path.Combine(path1, path2);
+
+        public static string GetDirectoryName(string path) =>
+            Path.GetDirectoryName(path)!;
 
         public static void CreateDirectoryIfNotExist(
             string directoryPath)
