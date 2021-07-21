@@ -22,12 +22,16 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
+using PowerPlayZipper.Utilities;
+
 namespace PowerPlayZipper
 {
     public static class UnzipperTestCore
     {
-        public static string GetTempPath(string suffix) =>
-            Path.Combine(Path.GetTempPath(), $"Unzipper_{suffix}");
+        public static string GetTempPath(string suffix, string? basePath = null) =>
+            FileSystemAccessor.CombinePath(
+                basePath ?? Path.GetTempPath(),
+                $"Unzipper_{suffix}");
 
         public static async ValueTask UnzipByPowerPlayZipperAsync(
             UnzipperTestSetup setup, string basePath, int pcount = -1)

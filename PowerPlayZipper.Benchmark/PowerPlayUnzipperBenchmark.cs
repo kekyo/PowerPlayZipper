@@ -19,6 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 using BenchmarkDotNet.Attributes;
@@ -48,7 +49,11 @@ namespace PowerPlayZipper
         public void Setup()
         {
             var now = DateTime.Now.ToString("mmssfff");
-            this.ppzBasePath = UnzipperTestCore.GetTempPath($"PPZ{now}");
+            this.ppzBasePath = UnzipperTestCore.GetTempPath(
+                $"PPZ{now}",
+                (Environment.OSVersion.Platform == PlatformID.Win32NT) ?
+                    Path.GetFullPath(".").Substring(0, 3) :
+                    null);
 
             FileSystemAccessor.CreateDirectoryIfNotExist(this.ppzBasePath);
         }
