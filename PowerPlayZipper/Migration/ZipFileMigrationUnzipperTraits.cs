@@ -1,7 +1,7 @@
 ﻿using System.IO;
 
 using PowerPlayZipper.Advanced;
-using PowerPlayZipper.Compatibility;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper.Migration
 {

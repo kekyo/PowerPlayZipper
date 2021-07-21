@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using PowerPlayZipper.Compatibility;
 using PowerPlayZipper.Advanced;
 using PowerPlayZipper.Internal.Unzip;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper
 {
@@ -24,7 +25,6 @@ namespace PowerPlayZipper
     public sealed class Unzipper : IUnzipper, ISynchronousUnzipper
     {
         private const int DefaultStreamBufferSize = 131072;
-        private const int NotifyCount = 100;
 
         public Unzipper() =>
             this.DefaultFileNameEncoding = Encoding.UTF8;
@@ -62,86 +62,14 @@ namespace PowerPlayZipper
             Action<List<Exception>> failed,
             CancellationToken cancellationToken)
         {
-            var directoryConstructor = new DirectoryConstructor(traits.CreateDirectoryIfNotExist);
-
-            var totalFiles = 0;
-            var totalCompressedSize = 0L;
-            var totalOriginalSize = 0L;
-
-            var sw = new Stopwatch();
-            sw.Start();
-
-            var context = new Context(
-                traits.OpenForReadZipFile,
+            var context = new Controller(
+                traits,
                 this.IgnoreEmptyDirectoryEntry,
                 (this.MaxParallelCount >= 1) ? this.MaxParallelCount : Environment.ProcessorCount,
                 this.StreamBufferSize,
                 this.DefaultFileNameEncoding ?? IndependentFactory.GetSystemDefaultEncoding(),
-                traits.IsRequiredProcessing,
-                (entry, compressedStream, streamBuffer) =>
-                {
-                    var targetPath = traits.GetTargetPath(entry);
-                    var directoryPath = Path.GetDirectoryName(targetPath)!;
-
-                    // Invoke event.
-                    traits.OnProcessing(entry, ProcessingStates.Begin, 0);
-
-                    // Create base directory.
-                    directoryConstructor.CreateIfNotExist(directoryPath);
-
-                    if (compressedStream != null)
-                    {
-                        Debug.Assert(streamBuffer != null);
-
-                        // Copy stream data to target file.
-                        using (var fs = traits.OpenForWriteFile(targetPath, streamBuffer!.Length))
-                        {
-                            // If opened.
-                            if (fs != null)
-                            {
-                                var notifyCount = NotifyCount;
-                                while (true)
-                                {
-                                    var read = compressedStream.Read(
-                                        streamBuffer!, 0, streamBuffer!.Length);
-                                    if (read == 0)
-                                    {
-                                        break;
-                                    }
-                                    fs.Write(streamBuffer!, 0, read);
-
-                                    if (notifyCount-- <= 0)
-                                    {
-                                        // Invoke event.
-                                        traits.OnProcessing(entry, ProcessingStates.Processing, fs.Position);
-                                        notifyCount = NotifyCount;
-                                    }
-                                }
-                                fs.Flush();
-
-                                Interlocked.Increment(ref totalFiles);
-                                Interlocked.Add(ref totalCompressedSize, entry.CompressedSize);
-                                Interlocked.Add(ref totalOriginalSize, entry.OriginalSize);
-                            }
-                        }
-                    }
-
-                    // Invoke event.
-                    traits.OnProcessing(entry, ProcessingStates.Done, entry.OriginalSize);
-                },
-                (exceptions, parallelCount, internalStats) =>
-                {
-                    if (exceptions.Count >= 1)
-                    {
-                        failed(exceptions);
-                    }
-                    else
-                    {
-                        succeeded(new ProcessedResults(
-                            totalFiles, totalCompressedSize, totalOriginalSize,
-                            sw.Elapsed, parallelCount, internalStats));
-                    }
-                });
+                succeeded,
+                failed);
 
             cancellationToken.Register(context.RequestAbort);
             context.Start();

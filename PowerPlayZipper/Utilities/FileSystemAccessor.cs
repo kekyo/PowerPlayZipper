@@ -5,7 +5,7 @@ using System.Text;
 
 using PowerPlayZipper.Internal;
 
-namespace PowerPlayZipper.Compatibility
+namespace PowerPlayZipper.Utilities
 {
     public static class FileSystemAccessor
     {

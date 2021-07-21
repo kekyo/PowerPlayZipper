@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text.RegularExpressions;
 
-using PowerPlayZipper.Compatibility;
+using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper.Advanced
 {
@@ -12,6 +12,8 @@ namespace PowerPlayZipper.Advanced
         public readonly string ExtractToBasePath;
         public readonly Regex? RegexPattern;
 
+        private readonly DirectoryConstructor directoryConstructor;
+
         public DefaultUnzipperTraits(
             string zipFilePath, string extractToBasePath,
             string? regexPattern = null)
@@ -19,6 +21,8 @@ namespace PowerPlayZipper.Advanced
             this.ZipFilePath = zipFilePath;
             this.ExtractToBasePath = extractToBasePath;
             this.RegexPattern = CompilePattern(regexPattern);
+
+            this.directoryConstructor = new(this.CreateDirectoryIfNotExist);
         }
 
         internal static Regex? CompilePattern(string? regexPattern) =>
@@ -27,6 +31,16 @@ namespace PowerPlayZipper.Advanced
 #else
             string.IsNullOrWhiteSpace(regexPattern) ? null : new Regex(regexPattern, RegexOptions.Compiled);
 #endif
+
+        public void Started()
+        {
+            this.directoryConstructor.Clear();
+            this.OnStarted();
+        }
+
+        protected virtual void OnStarted()
+        {
+        }
 
         public virtual Stream OpenForReadZipFile(int recommendedBufferSize) =>
             FileSystemAccessor.OpenForReadFile(this.ZipFilePath, recommendedBufferSize);
@@ -44,6 +58,16 @@ namespace PowerPlayZipper.Advanced
             FileSystemAccessor.OpenForOverwriteFile(path, recommendedBufferSize);
 
         public virtual void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position)
+        {
+        }
+
+        public void Finished()
+        {
+            this.directoryConstructor.Clear();
+            this.OnFinished();
+        }
+
+        protected virtual void OnFinished()
         {
         }
     }

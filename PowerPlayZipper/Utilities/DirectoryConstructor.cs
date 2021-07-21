@@ -1,25 +1,27 @@
-﻿using System;
+﻿using PowerPlayZipper.Compatibility;
+using System;
 using System.Collections.Generic;
 using System.Threading;
-
-using PowerPlayZipper.Compatibility;
 
 #if NET20 || NET35
 using ManualResetEventSlim = System.Threading.ManualResetEvent;
 #endif
 
-namespace PowerPlayZipper.Internal.Unzip
+namespace PowerPlayZipper.Utilities
 {
     /// <summary>
     /// Fast and lightweight directory creator.
     /// </summary>
-    internal sealed class DirectoryConstructor
+    public sealed class DirectoryConstructor
     {
         private readonly Action<string> createIfNotExist;
         private readonly Dictionary<string, ManualResetEventSlim?> processings = new();
 
         public DirectoryConstructor(Action<string> createIfNotExist) =>
             this.createIfNotExist = createIfNotExist;
+
+        public void Clear() =>
+            this.processings.Clear();
 
         /// <summary>
         /// Create directory if not exist.

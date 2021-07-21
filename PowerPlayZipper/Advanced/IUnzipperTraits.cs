@@ -4,6 +4,8 @@ namespace PowerPlayZipper.Advanced
 {
     public interface IUnzipperTraits
     {
+        void Started();
+
         Stream OpenForReadZipFile(int recommendedBufferSize);
 
         bool IsRequiredProcessing(ZippedFileEntry entry);
@@ -14,5 +16,7 @@ namespace PowerPlayZipper.Advanced
         Stream? OpenForWriteFile(string path, int recommendedBufferSize);
 
         void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position);
+
+        void Finished();
     }
 }
