@@ -111,7 +111,7 @@ namespace PowerPlayZipper
             Console.WriteLine("License under Apache v2");
             Console.WriteLine();
             Console.WriteLine("usage: ppzip -u [options] <zipFile> [<zipFile> ...]");
-            Console.WriteLine("usage: ppzip -z [options] <zipFile> [<file> ...]");
+            // TODO: Console.WriteLine("usage: ppzip -z [options] <zipFile> [<file> ...]");
 
             options.WriteOptionDescriptions(Console.Out);
         }
@@ -128,7 +128,7 @@ namespace PowerPlayZipper
             var options = new OptionSet
             {
                 { "u|unzip", "Unzip target files", v => doZip = false },
-                { "z|zip", "Zip target files", v => doZip = true },
+                // TODO: { "z|zip", "Zip target files", v => doZip = true },
                 { "o=", "Unzipped output directory path", v => unzipTargetBasePath = v },
                 { "p=", "Maximum parallel count", (int v) => maxParallelCount = v },
                 { "v|verbose", "Verbose processing", v => doVerbose = true },

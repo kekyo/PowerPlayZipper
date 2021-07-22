@@ -13,10 +13,9 @@
 # What's this?
 
 PowerPlay Zipper is an implementation of `Lightning-Fast` Zip file compression/decompression library on .NET.
-
-* 7x and over faster unzipping execution than `SharpZipLib.FastZip`.
-
 Simple word for strategy: **Maximize multi-core parallel file compression/decompression**.
+
+* 3x and over faster unzipping execution than `SharpZipLib.FastZip` / `System.IO.Compression.ZipFile`.
 
 Yes, we can easy replace PowerPlay Zipper from another zip manipulation library.
 
@@ -112,14 +111,14 @@ UnrollFactor=1
 * Ubuntu 20.04: 3.1x faster than `System.IO.Compression`.
 * Windows 10 19043: 2.2x faster than `SharpZipLib`.
 
-| Ubuntu 20.04 |  Mean | Error | StdDev |
-|:-----|--------|--------:|---------:|---------:|
+| Ubuntu 20.04 | Mean | Error | StdDev |
+|:-----|-------:|---------:|---------:|
 | PowerPlayZipper | 679.6 ms | 13.10 ms | 14.56 ms |
 | SharpZipLib | 4.105 s | 0.0129 s | 0.0101 s |
 | System.IO.Compression | 2.117 s | 0.0099 s | 0.0093 s |
 
 | Windows 10 19043 | Mean | Error | StdDev |
-|:-----|--------|--------:|---------:|---------:|
+|:-----|-------:|---------:|---------:|
 | PowerPlayZipper | 7.936 s | 0.1811 s | 0.5225 s |
 | SharpZipLib | 17.80 s | 0.122 s | 0.108 s |
 | System.IO.Compression | 18.35 s | 0.092 s | 0.086 s |
@@ -130,13 +129,13 @@ UnrollFactor=1
 * Windows 10 19043: 2.5x faster than `System.IO.Compression`.
 
 | Ubuntu 20.04 | Mean | Error | StdDev |
-|:-----|--------|--------:|---------:|---------:|
+|:-----|-------:|---------:|---------:|
 | PowerPlayZipper | 333.5 ms | 6.65 ms | 19.38 ms |
 | SharpZipLib | 1.998 s | 0.0053 s | 0.0042 s |
 | System.IO.Compression | 788.0 ms | 2.25 ms | 1.99 ms |
 
 | Windows 10 19043 | Mean | Error | StdDev |
-|:-----|--------|--------:|---------:|---------:|
+|:-----|-------:|---------:|---------:|
 | PowerPlayZipper | 965.6 ms | 48.51 ms | 140.7 ms |
 | SharpZipLib | 4.294 s | 0.0824 s | 0.1072 s |
 | System.IO.Compression | 2.381 s | 0.0460 s | 0.0615 s |
