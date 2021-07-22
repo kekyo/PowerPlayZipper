@@ -109,15 +109,16 @@ UnrollFactor=1
 
 ## dotnet/docs repo
 
-* Ubuntu 20.04: 7x faster.
-* Windows 10: 2.2x faster.
+* Ubuntu 20.04: 3.1x faster than `System.IO.Compression`.
+* Windows 10 19043: 2.2x faster than `SharpZipLib`.
 
-| Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
+| Ubuntu 20.04 |  Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 587.9 ms | 11.67 ms | 23.30 ms |
-| SharpZipLib | Run | 4.165 s | 0.0373 s | 0.0349 s |
+| PowerPlayZipper | 679.6 ms | 13.10 ms | 14.56 ms |
+| SharpZipLib | 4.105 s | 0.0129 s | 0.0101 s |
+| System.IO.Compression | 2.117 s | 0.0099 s | 0.0093 s |
 
-| Windows 10 | Mean | Error | StdDev |
+| Windows 10 19043 | Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | 7.936 s | 0.1811 s | 0.5225 s |
 | SharpZipLib | 17.80 s | 0.122 s | 0.108 s |
@@ -125,15 +126,16 @@ UnrollFactor=1
 
 ## Mixed Reality Toolkit repo
 
-* Ubuntu 20.04: 7x faster.
-* Windows 10: 2.5x faster.
+* Ubuntu 20.04: 2.3x faster than `System.IO.Compression`.
+* Windows 10 19043: 2.5x faster than `System.IO.Compression`.
 
-| Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
+| Ubuntu 20.04 | Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 283.3 ms | 5.33 ms | 5.47 ms |
-| SharpZipLib | Run | 1.994 s | 0.0056 s | 0.0047 s |
+| PowerPlayZipper | 333.5 ms | 6.65 ms | 19.38 ms |
+| SharpZipLib | 1.998 s | 0.0053 s | 0.0042 s |
+| System.IO.Compression | 788.0 ms | 2.25 ms | 1.99 ms |
 
-| Windows 10 | Mean | Error | StdDev |
+| Windows 10 19043 | Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | 965.6 ms | 48.51 ms | 140.7 ms |
 | SharpZipLib | 4.294 s | 0.0824 s | 0.1072 s |
