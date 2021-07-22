@@ -77,8 +77,9 @@ Using these zip files on Benchmark .NET:
 
 * [GitHub zipped dotnet/docs repo ~300MB (Contains many standard size text files)](https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip)
 * [GitHub zipped Mixed Reality Toolkit repo ~160MB (Contains large files)](https://github.com/microsoft/MixedRealityToolkit/archive/b63b40b9a4bd4e350f35986d450dd5393c6e58a0.zip)
-* PowerPlayZipper 0.0.32 `Unzipper.UnzipAsync()`
+* PowerPlayZipper 0.0.47 `Unzipper.UnzipAsync()`
 * SharpZipLib 1.3.2 `FastZip.ExtractZip()`
+* System.IO.Compression 
 
 Windows 10 on Core i9-9980XE (36 cores):
 
@@ -109,34 +110,34 @@ UnrollFactor=1
 ## dotnet/docs repo
 
 * Ubuntu 20.04: 7x faster.
-* Windows 10: 3x faster.
+* Windows 10: 2.2x faster.
 
 | Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | Run | 587.9 ms | 11.67 ms | 23.30 ms |
 | SharpZipLib | Run | 4.165 s | 0.0373 s | 0.0349 s |
 
-| Windows 10 | Method |    Mean |    Error |   StdDev |
+| Windows 10 | Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 6.040 s | 0.1145 s | 0.1176 s |
-| SharpZipLib | Run | 18.40 s | 0.154 s | 0.144 s |
-| System.IO.Compression | Run | 19.52 s | 0.141 s | 0.132 s |
+| PowerPlayZipper | 7.936 s | 0.1811 s | 0.5225 s |
+| SharpZipLib | 17.80 s | 0.122 s | 0.108 s |
+| System.IO.Compression | 18.35 s | 0.092 s | 0.086 s |
 
 ## Mixed Reality Toolkit repo
 
 * Ubuntu 20.04: 7x faster.
-* Windows 10: 6x faster.
+* Windows 10: 2.5x faster.
 
 | Ubuntu 20.04 | Method |    Mean |    Error |   StdDev |
 |:-----|--------|--------:|---------:|---------:|
 | PowerPlayZipper | Run | 283.3 ms | 5.33 ms | 5.47 ms |
 | SharpZipLib | Run | 1.994 s | 0.0056 s | 0.0047 s |
 
-| Windows 10 | Method |    Mean |    Error |   StdDev |
+| Windows 10 | Mean | Error | StdDev |
 |:-----|--------|--------:|---------:|---------:|
-| PowerPlayZipper | Run | 693.7 ms | 13.53 ms | 12.66 ms |
-| SharpZipLib | Run | 4.272 s | 0.0679 s | 0.0635 s |
-| System.IO.Compression | Run | 2.410 s | 0.0477 s | 0.0860 s |
+| PowerPlayZipper | 965.6 ms | 48.51 ms | 140.7 ms |
+| SharpZipLib | 4.294 s | 0.0824 s | 0.1072 s |
+| System.IO.Compression | 2.381 s | 0.0460 s | 0.0615 s |
 
 # Supported platforms
 
