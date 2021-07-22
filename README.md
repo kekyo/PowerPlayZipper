@@ -187,7 +187,16 @@ Under Apache v2.
 
 # Histroy
 
-* 0.0.32: Rewrite new generation 3 unzip code made faster to 3x (dotnet/docs).
-* 0.0.29: Added .NET CLI tool package named `ppzip`.
-* 0.0.27: Minor bug fixed.
-* 0.0.12: First NuGet package released.
+* 0.0.51:
+  * Enabled ability of long path names on Windows (.NET Framework/.NET Standard)
+  * Completely separated accessor for file system manipulation by an interface `IUnzipperTraits`.
+  * Added migration layer interfaces similar `SharpZipLib.FastZip` and `System.IO.Compression.ZipFile`.
+  * Implemented generation 4 improvement with lock-free structure (WIP).
+* 0.0.32:
+  * Rewrite new generation 3 unzip code made faster to 3x (dotnet/docs).
+* 0.0.29:
+  * Added .NET CLI tool package named `ppzip`.
+* 0.0.27:
+  * Minor bug fixed.
+* 0.0.12:
+  * First NuGet package released.
