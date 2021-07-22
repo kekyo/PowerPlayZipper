@@ -390,7 +390,7 @@ namespace PowerPlayZipper.Utilities
             string path, int recommendedBufferSize) =>
             new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, recommendedBufferSize);
 
-        public static Stream? OpenForOverwriteFile(
+        public static Stream OpenForOverwriteFile(
             string path, int recommendedBufferSize) =>
             new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, recommendedBufferSize);
 

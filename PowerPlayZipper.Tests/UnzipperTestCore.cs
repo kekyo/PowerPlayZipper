@@ -39,7 +39,7 @@ namespace PowerPlayZipper
             var unzipper = new Unzipper();
             if (pcount >= 1)
             {
-                unzipper.MaxParallelCount = pcount;
+                unzipper.MaximumParallelCount = pcount;
             }
             var result = await unzipper.UnzipAsync(setup.ZipFilePath, basePath);
             Console.WriteLine(result.PrettyPrint);

@@ -22,11 +22,11 @@ using System;
 
 using PowerPlayZipper.Advanced;
 
-namespace PowerPlayZipper.Internal.Unzip
+namespace PowerPlayZipper.Internal.Zip
 {
-    internal sealed class BypassProcessingUnzipperTraits : DefaultUnzipperTraits
+    internal sealed class BypassProcessingZipperTraits : DefaultZipperTraits
     {
-        public BypassProcessingUnzipperTraits(
+        public BypassProcessingZipperTraits(
             string zipFilePath, string extractToBasePath, string? regexPattern) :
             base(zipFilePath, extractToBasePath, regexPattern)
         { }

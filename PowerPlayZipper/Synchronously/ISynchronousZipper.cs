@@ -22,10 +22,12 @@ using System;
 using System.ComponentModel;
 using System.Threading;
 
-namespace PowerPlayZipper.Advanced
+using PowerPlayZipper.Advanced;
+
+namespace PowerPlayZipper.Synchronously
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public interface ISynchronousUnzipper : IUnzipper
+    public interface ISynchronousZipper : IZipper
     {
 #if !NET20 && !NET35
         /// <summary>
@@ -33,16 +35,16 @@ namespace PowerPlayZipper.Advanced
         /// <param name="traits"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
-        ProcessedResults Unzip(
-            IUnzipperTraits traits,
+        ProcessedResults Zip(
+            IZipperTraits traits,
             CancellationToken cancellationToken = default);
 
-        ProcessedResults Unzip(
+        ProcessedResults Zip(
             string zipFilePath,
             string extractToBasePath,
             CancellationToken cancellationToken = default);
 
-        ProcessedResults Unzip(
+        ProcessedResults Zip(
             string zipFilePath,
             string extractToBasePath,
             string regexPattern,

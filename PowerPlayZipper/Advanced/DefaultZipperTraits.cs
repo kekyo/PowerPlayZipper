@@ -26,23 +26,19 @@ using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper.Advanced
 {
-    public class DefaultUnzipperTraits : IUnzipperTraits
+    public class DefaultZipperTraits : IZipperTraits
     {
         public readonly string ZipFilePath;
         public readonly string ExtractToBasePath;
         public readonly Regex? RegexPattern;
 
-        private readonly DirectoryConstructor directoryConstructor;
-
-        public DefaultUnzipperTraits(
+        public DefaultZipperTraits(
             string zipFilePath, string extractToBasePath,
             string? regexPattern = null)
         {
             this.ZipFilePath = zipFilePath;
             this.ExtractToBasePath = extractToBasePath;
             this.RegexPattern = CompilePattern(regexPattern);
-
-            this.directoryConstructor = new(this.CreateDirectoryIfNotExist);
         }
 
         internal static Regex? CompilePattern(string? regexPattern) =>
@@ -52,18 +48,12 @@ namespace PowerPlayZipper.Advanced
             string.IsNullOrWhiteSpace(regexPattern) ? null : new Regex(regexPattern!, RegexOptions.Compiled);
 #endif
 
-        public void Started()
-        {
-            this.directoryConstructor.Clear();
-            this.OnStarted();
-        }
-
-        protected virtual void OnStarted()
+        public virtual void Started()
         {
         }
 
-        public virtual Stream OpenForReadZipFile(int recommendedBufferSize) =>
-            FileSystemAccessor.OpenForReadFile(this.ZipFilePath, recommendedBufferSize);
+        public virtual Stream? OpenForReadFile(string path, int recommendedBufferSize) =>
+            FileSystemAccessor.OpenForReadFile(path, recommendedBufferSize);
 
         public virtual bool IsRequiredProcessing(ZippedFileEntry entry) =>
             this.RegexPattern?.IsMatch(entry.NormalizedFileName) ?? true;
@@ -77,20 +67,14 @@ namespace PowerPlayZipper.Advanced
         public virtual void CreateDirectoryIfNotExist(string directoryPath) =>
             FileSystemAccessor.CreateDirectoryIfNotExist(directoryPath);
 
-        public virtual Stream? OpenForWriteFile(string path, int recommendedBufferSize) =>
-            FileSystemAccessor.OpenForOverwriteFile(path, recommendedBufferSize);
+        public virtual Stream OpenForWriteZipFile(int recommendedBufferSize) =>
+            FileSystemAccessor.OpenForOverwriteFile(this.ZipFilePath, recommendedBufferSize);
 
         public virtual void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position)
         {
         }
 
-        public void Finished()
-        {
-            this.directoryConstructor.Clear();
-            this.OnFinished();
-        }
-
-        protected virtual void OnFinished()
+        public virtual void Finished()
         {
         }
     }

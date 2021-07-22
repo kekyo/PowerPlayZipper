@@ -19,49 +19,17 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Text;
+using System.ComponentModel;
 using System.Threading;
 
-#if !NET20 && !NET35
-using System.Threading.Tasks;
-#endif
-
 using PowerPlayZipper.Advanced;
-using PowerPlayZipper.Compatibility;
 
-namespace PowerPlayZipper
+namespace PowerPlayZipper.Synchronously
 {
-    public interface IUnzipper : IZipperProcessing
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public interface ISynchronousUnzipper : IUnzipper
     {
-        bool IgnoreEmptyDirectoryEntry { get; }
-
-        Encoding DefaultFileNameEncoding { get; }
-
-        int MaximumParallelCount { get; }
-
-        int StreamBufferSize { get; }
-
 #if !NET20 && !NET35
-        /// <summary>
-        /// </summary>
-        /// <param name="traits"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<ProcessedResults> UnzipAsync(
-            IUnzipperTraits traits,
-            CancellationToken cancellationToken = default);
-
-        Task<ProcessedResults> UnzipAsync(
-            string zipFilePath,
-            string extractToBasePath,
-            CancellationToken cancellationToken = default);
-
-        Task<ProcessedResults> UnzipAsync(
-            string zipFilePath,
-            string extractToBasePath,
-            string regexPattern,
-            CancellationToken cancellationToken = default);
-#else
         /// <summary>
         /// </summary>
         /// <param name="traits"></param>

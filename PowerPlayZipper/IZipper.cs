@@ -31,9 +31,9 @@ using PowerPlayZipper.Compatibility;
 
 namespace PowerPlayZipper
 {
-    public interface IUnzipper : IZipperProcessing
+    public interface IZipper : IZipperProcessing
     {
-        bool IgnoreEmptyDirectoryEntry { get; }
+        bool IgnoreEmptyDirectory { get; }
 
         Encoding DefaultFileNameEncoding { get; }
 
@@ -47,16 +47,16 @@ namespace PowerPlayZipper
         /// <param name="traits"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<ProcessedResults> UnzipAsync(
-            IUnzipperTraits traits,
+        Task<ProcessedResults> ZipAsync(
+            IZipperTraits traits,
             CancellationToken cancellationToken = default);
 
-        Task<ProcessedResults> UnzipAsync(
+        Task<ProcessedResults> ZipAsync(
             string zipFilePath,
             string extractToBasePath,
             CancellationToken cancellationToken = default);
 
-        Task<ProcessedResults> UnzipAsync(
+        Task<ProcessedResults> ZipAsync(
             string zipFilePath,
             string extractToBasePath,
             string regexPattern,
@@ -67,16 +67,16 @@ namespace PowerPlayZipper
         /// <param name="traits"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>ProcessedResults</returns>
-        ProcessedResults Unzip(
-            IUnzipperTraits traits,
+        ProcessedResults Zip(
+            IZipperTraits traits,
             CancellationToken cancellationToken = default);
 
-        ProcessedResults Unzip(
+        ProcessedResults Zip(
             string zipFilePath,
             string extractToBasePath,
             CancellationToken cancellationToken = default);
 
-        ProcessedResults Unzip(
+        ProcessedResults Zip(
             string zipFilePath,
             string extractToBasePath,
             string regexPattern,

@@ -18,22 +18,28 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
+using System.IO;
 
-using PowerPlayZipper.Advanced;
-
-namespace PowerPlayZipper.Internal.Unzip
+namespace PowerPlayZipper.Advanced
 {
-    internal sealed class BypassProcessingUnzipperTraits : DefaultUnzipperTraits
+    public interface IZipperTraits
     {
-        public BypassProcessingUnzipperTraits(
-            string zipFilePath, string extractToBasePath, string? regexPattern) :
-            base(zipFilePath, extractToBasePath, regexPattern)
-        { }
+        void Started();
 
-        public event EventHandler<ProcessingEventArgs>? Processing;
+        Stream? OpenForReadFile(string path, int recommendedBufferSize);
 
-        public override void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position) =>
-            this.Processing?.Invoke(this, new ProcessingEventArgs(entry, state, position));
+        bool IsRequiredProcessing(ZippedFileEntry entry);
+
+        string GetTargetPath(ZippedFileEntry entry);
+
+        string GetDirectoryName(string path);
+
+        void CreateDirectoryIfNotExist(string directoryPath);
+
+        Stream OpenForWriteZipFile(int recommendedBufferSize);
+
+        void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position);
+
+        void Finished();
     }
 }

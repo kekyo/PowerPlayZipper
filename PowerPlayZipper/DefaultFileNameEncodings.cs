@@ -18,22 +18,11 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-
-using PowerPlayZipper.Advanced;
-
-namespace PowerPlayZipper.Internal.Unzip
+namespace PowerPlayZipper
 {
-    internal sealed class BypassProcessingUnzipperTraits : DefaultUnzipperTraits
+    public enum DefaultFileNameEncodings
     {
-        public BypassProcessingUnzipperTraits(
-            string zipFilePath, string extractToBasePath, string? regexPattern) :
-            base(zipFilePath, extractToBasePath, regexPattern)
-        { }
-
-        public event EventHandler<ProcessingEventArgs>? Processing;
-
-        public override void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position) =>
-            this.Processing?.Invoke(this, new ProcessingEventArgs(entry, state, position));
+        AlwaysUTF8,
+        SystemDefaultIfApplicable
     }
 }
