@@ -19,6 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -28,16 +29,15 @@ namespace PowerPlayZipper.Advanced
 {
     public class DefaultZipperTraits : IZipperTraits
     {
+        public readonly string BasePath;
         public readonly string ZipFilePath;
-        public readonly string ExtractToBasePath;
         public readonly Regex? RegexPattern;
 
         public DefaultZipperTraits(
-            string zipFilePath, string extractToBasePath,
-            string? regexPattern = null)
+            string basePath, string zipFilePath, string? regexPattern = null)
         {
+            this.BasePath = basePath;
             this.ZipFilePath = zipFilePath;
-            this.ExtractToBasePath = extractToBasePath;
             this.RegexPattern = CompilePattern(regexPattern);
         }
 
@@ -52,14 +52,17 @@ namespace PowerPlayZipper.Advanced
         {
         }
 
+        public virtual IEnumerable<string> EnumeratePaths(string basePath) =>
+            FileSystemAccessor.EnumeratePaths(basePath);
+
+        public virtual bool IsRequiredProcessing(string path) =>
+            this.RegexPattern?.IsMatch(path) ?? true;
+
         public virtual Stream? OpenForReadFile(string path, int recommendedBufferSize) =>
             FileSystemAccessor.OpenForReadFile(path, recommendedBufferSize);
 
-        public virtual bool IsRequiredProcessing(ZippedFileEntry entry) =>
-            this.RegexPattern?.IsMatch(entry.NormalizedFileName) ?? true;
-
         public virtual string GetTargetPath(ZippedFileEntry entry) =>
-            FileSystemAccessor.CombinePath(this.ExtractToBasePath, entry.NormalizedFileName);
+            FileSystemAccessor.CombinePath(this.BasePath, entry.NormalizedFileName);
 
         public virtual string GetDirectoryName(string path) =>
             FileSystemAccessor.GetDirectoryName(path);

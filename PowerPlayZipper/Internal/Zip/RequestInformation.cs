@@ -18,18 +18,15 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#if NETSTANDARD1_3 || NETSTANDARD1_6
-using System;
-using System.Threading.Tasks;
-#endif
+using System.Runtime.CompilerServices;
 
-namespace PowerPlayZipper.Compatibility
+namespace PowerPlayZipper.Internal.Zip
 {
-#if NETSTANDARD1_3 || NETSTANDARD1_6
-    internal static class ThreadPool
+    /// <summary>
+    /// Request packet from parser to worker.
+    /// </summary>
+    internal sealed class RequestInformation : StackableElement
     {
-        public static void QueueUserWorkItem(Action<object> action) =>
-            Task.Run(() => action(null!));
+        public string? TargetFilePath;
     }
-#endif
 }

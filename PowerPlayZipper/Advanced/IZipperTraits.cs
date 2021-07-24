@@ -18,6 +18,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+using System.Collections.Generic;
 using System.IO;
 
 namespace PowerPlayZipper.Advanced
@@ -26,9 +27,11 @@ namespace PowerPlayZipper.Advanced
     {
         void Started();
 
-        Stream? OpenForReadFile(string path, int recommendedBufferSize);
+        IEnumerable<string> EnumeratePaths(string basePath);
 
-        bool IsRequiredProcessing(ZippedFileEntry entry);
+        bool IsRequiredProcessing(string path);
+
+        Stream? OpenForReadFile(string path, int recommendedBufferSize);
 
         string GetTargetPath(ZippedFileEntry entry);
 

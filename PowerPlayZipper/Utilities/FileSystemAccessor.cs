@@ -19,7 +19,9 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -359,6 +361,48 @@ namespace PowerPlayZipper.Utilities
                 }
             }
         }
+
+        private static IEnumerable<string> Win32EnumeratePaths(string basePath)
+        {
+            using (var handle = NativeMethods.Win32FindFirstFile(
+                CombinePath(basePath, "*"), out var findData))
+            {
+                if (handle.IsInvalid)
+                {
+                    ThrowWin32Error();
+                }
+
+                while (true)
+                {
+                    if ((findData.dwFileAttributes & FileAttributes.Directory) == FileAttributes.Directory)
+                    {
+                        if ((findData.cFileName != ".") && (findData.cFileName != ".."))
+                        {
+                            var childPath = CombinePath(basePath, findData.cFileName);
+                            foreach (var path in Win32EnumeratePaths(childPath))
+                            {
+                                yield return path;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var childPath = CombinePath(basePath, findData.cFileName);
+                        yield return childPath;
+                    }
+
+                    if (!NativeMethods.Win32FindNextFile(handle, ref findData))
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        public static IEnumerable<string> EnumeratePaths(string basePath) =>
+            isOnWindowsNetFx ?
+                Win32EnumeratePaths(basePath) :
+                Directory.EnumerateFileSystemEntries(basePath, "*", SearchOption.AllDirectories);
 #else
         public static string CombinePath(
             string path1, string path2) =>
@@ -415,6 +459,9 @@ namespace PowerPlayZipper.Utilities
                 }
             }
         }
+
+        public static IEnumerable<string> EnumeratePaths(string basePath) =>
+            Directory.EnumerateFileSystemEntries(basePath, "*", SearchOption.AllDirectories);
 #endif
     }
 }

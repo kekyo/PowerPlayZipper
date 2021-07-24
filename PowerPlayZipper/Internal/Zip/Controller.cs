@@ -34,13 +34,17 @@ namespace PowerPlayZipper.Internal.Zip
         private const int NotifyCount = 100;
         private const int ParserBufferSize = 16384;
 
-        //private Parser? parser;
         //private readonly Worker?[] workers;
+        //private Parser? parser;
+
+        private readonly string basePath;
         private readonly IZipperTraits traits;
         private readonly Action<ProcessedResults> succeeded;
         private readonly Action<List<Exception>> failed;
         private readonly List<Exception> caughtExceptions = new();
         private readonly Stopwatch elapsed = new();
+        
+        private readonly LockFreeStack<RequestInformation> requestPool = new(256, 16384);
 
         private volatile int runningThreads;
         private volatile int totalFiles;
@@ -50,11 +54,11 @@ namespace PowerPlayZipper.Internal.Zip
         public readonly bool IgnoreEmptyDirectory;
         public readonly Encoding Encoding;
 
-        public readonly ArrayPool<byte> BufferPool = new(ParserBufferSize, 16, 64);
-        //public readonly LockFreeStack<RequestInformation> RequestPool = new(256, 16384);
-        //public readonly LockFreeQueue<RequestInformation> RequestSpreader = new();
+        public readonly LockFreeQueue<RequestInformation> RequestSpreader = new();
+        public readonly LockFreeQueue<RequestInformation> RequestCombiner = new();
 
         public Controller(
+            string basePath,
             IZipperTraits traits,
             bool ignoreEmptyDirectory,
             int parallelCount,
@@ -69,36 +73,12 @@ namespace PowerPlayZipper.Internal.Zip
             this.traits = traits;
             this.succeeded = succeeded;
             this.failed = failed;
-
+            
             //this.workers = new Worker[parallelCount];
             //for (var index = 0; index < this.workers.Length; index++)
             //{
             //    this.workers[index] = new Worker(traits.OpenForReadZipFile(streamBufferSize), streamBufferSize, this);
             //}
-
-            //this.parser = new Parser(traits.OpenForReadZipFile(ParserBufferSize), this);
-        }
-
-        /// <summary>
-        /// Evaluate file entry.
-        /// </summary>
-        /// <param name="entry">File entry</param>
-        /// <returns>True if required processing</returns>
-        internal bool OnEvaluate(ZippedFileEntry entry)
-        {
-            try
-            {
-                return this.traits.IsRequiredProcessing(entry);
-            }
-            catch (Exception ex)
-            {
-                lock (this.caughtExceptions)
-                {
-                    this.caughtExceptions.Add(ex);
-                }
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -238,7 +218,7 @@ namespace PowerPlayZipper.Internal.Zip
         /// <summary>
         /// Start zipping operation.
         /// </summary>
-        public void Start()
+        public void Run()
         {
             Debug.Assert(this.runningThreads == 0);
             //Debug.Assert(this.parser != null);
@@ -254,6 +234,34 @@ namespace PowerPlayZipper.Internal.Zip
             //    this.workers[index]!.StartConsume();
             //}
 
+            foreach (var path in this.traits.EnumeratePaths(this.basePath))
+            {
+                var required = false;
+                try
+                {
+                    required = this.traits.IsRequiredProcessing(path);
+                }
+                catch (Exception ex)
+                {
+                    lock (this.caughtExceptions)
+                    {
+                        this.caughtExceptions.Add(ex);
+                    }
+                }
+
+                if (!required)
+                {
+                    continue;
+                }
+
+                var request = this.requestPool.Pop();
+                Debug.Assert(string.IsNullOrEmpty(request.TargetFilePath));
+                request.TargetFilePath = path;
+
+                this.RequestSpreader.Enqueue(ref request);
+                Debug.Assert(request == null);
+            }
+            
             //this.parser!.Start();
         }
 
