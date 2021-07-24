@@ -21,15 +21,17 @@
 using System.Collections.Generic;
 using System.IO;
 
+using PowerPlayZipper.Utilities;
+
 namespace PowerPlayZipper.Advanced
 {
     public interface IZipperTraits
     {
         void Started();
 
-        IEnumerable<string> EnumeratePaths(string basePath);
+        IEnumerable<PathEntry> EnumerateTargetPaths();
 
-        bool IsRequiredProcessing(string path);
+        bool IsRequiredProcessing(PathEntry entry);
 
         Stream? OpenForReadFile(string path, int recommendedBufferSize);
 

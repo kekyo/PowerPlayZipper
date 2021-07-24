@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -362,7 +361,7 @@ namespace PowerPlayZipper.Utilities
             }
         }
 
-        private static IEnumerable<string> Win32EnumeratePaths(string basePath)
+        private static IEnumerable<PathEntry> Win32EnumeratePathsRecursive(string basePath)
         {
             using (var handle = NativeMethods.Win32FindFirstFile(
                 CombinePath(basePath, "*"), out var findData))
@@ -379,16 +378,17 @@ namespace PowerPlayZipper.Utilities
                         if ((findData.cFileName != ".") && (findData.cFileName != ".."))
                         {
                             var childPath = CombinePath(basePath, findData.cFileName);
-                            foreach (var path in Win32EnumeratePaths(childPath))
+                            yield return new PathEntry(childPath, true);
+                            foreach (var result in Win32EnumeratePathsRecursive(childPath))
                             {
-                                yield return path;
+                                yield return result;
                             }
                         }
                     }
                     else
                     {
                         var childPath = CombinePath(basePath, findData.cFileName);
-                        yield return childPath;
+                        yield return new PathEntry(childPath, false);
                     }
 
                     if (!NativeMethods.Win32FindNextFile(handle, ref findData))
@@ -399,10 +399,35 @@ namespace PowerPlayZipper.Utilities
             }
         }
 
-        public static IEnumerable<string> EnumeratePaths(string basePath) =>
+        private static IEnumerable<PathEntry> EnumeratePathsRecursive(string basePath)
+        {
+#if NET20 || NET35
+            foreach (var path in Directory.GetDirectories(basePath))
+#else
+            foreach (var path in Directory.EnumerateDirectories(basePath))
+#endif
+            {
+                yield return new PathEntry(path, true);
+                foreach (var result in EnumeratePathsRecursive(path))
+                {
+                    yield return result;
+                }
+            }
+
+#if NET20 || NET35
+            foreach (var path in Directory.GetFiles(basePath))
+#else
+            foreach (var path in Directory.EnumerateFiles(basePath))
+#endif
+            {
+                yield return new PathEntry(path, false);
+            }
+        }
+
+        public static IEnumerable<PathEntry> EnumeratePaths(string basePath) =>
             isOnWindowsNetFx ?
-                Win32EnumeratePaths(basePath) :
-                Directory.EnumerateFileSystemEntries(basePath, "*", SearchOption.AllDirectories);
+                Win32EnumeratePathsRecursive(basePath) :
+                EnumeratePathsRecursive(basePath);
 #else
         public static string CombinePath(
             string path1, string path2) =>
@@ -460,8 +485,25 @@ namespace PowerPlayZipper.Utilities
             }
         }
 
-        public static IEnumerable<string> EnumeratePaths(string basePath) =>
-            Directory.EnumerateFileSystemEntries(basePath, "*", SearchOption.AllDirectories);
+        private static IEnumerable<PathEntry> EnumeratePathsRecursive(string basePath)
+        {
+            foreach (var path in Directory.EnumerateDirectories(basePath))
+            {
+                yield return new PathEntry(path, true);
+                foreach (var result in EnumeratePathsRecursive(path))
+                {
+                    yield return result;
+                }
+            }
+
+            foreach (var path in Directory.EnumerateFiles(basePath))
+            {
+                yield return new PathEntry(path, false);
+            }
+        }
+
+        public static IEnumerable<PathEntry> EnumeratePaths(string basePath) =>
+            EnumeratePathsRecursive(basePath);
 #endif
     }
 }

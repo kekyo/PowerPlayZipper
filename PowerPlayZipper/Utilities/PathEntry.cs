@@ -18,22 +18,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-using System;
-
-using PowerPlayZipper.Advanced;
-
-namespace PowerPlayZipper.Internal.Zip
+namespace PowerPlayZipper.Utilities
 {
-    internal sealed class BypassProcessingZipperTraits : DefaultZipperTraits
+    public readonly struct PathEntry
     {
-        public BypassProcessingZipperTraits(
-            string zipFilePath, string extractToBasePath, string? regexPattern) :
-            base(extractToBasePath, zipFilePath, regexPattern)
-        { }
+        public readonly string Path;
+        public readonly bool IsDirectory;
 
-        public event EventHandler<ProcessingEventArgs>? Processing;
-
-        public override void OnProcessing(ZippedFileEntry entry, ProcessingStates state, long position) =>
-            this.Processing?.Invoke(this, new ProcessingEventArgs(entry, state, position));
+        public PathEntry(string path, bool isDirectory)
+        {
+            this.Path = path;
+            this.IsDirectory = isDirectory;
+        }
     }
 }

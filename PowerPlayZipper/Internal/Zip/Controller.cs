@@ -37,7 +37,6 @@ namespace PowerPlayZipper.Internal.Zip
         //private readonly Worker?[] workers;
         //private Parser? parser;
 
-        private readonly string basePath;
         private readonly IZipperTraits traits;
         private readonly Action<ProcessedResults> succeeded;
         private readonly Action<List<Exception>> failed;
@@ -58,7 +57,6 @@ namespace PowerPlayZipper.Internal.Zip
         public readonly LockFreeQueue<RequestInformation> RequestCombiner = new();
 
         public Controller(
-            string basePath,
             IZipperTraits traits,
             bool ignoreEmptyDirectory,
             int parallelCount,
@@ -227,19 +225,14 @@ namespace PowerPlayZipper.Internal.Zip
 
             this.elapsed.Start();
 
-            //this.runningThreads = this.workers.Length;
-            //for (var index = 0; index < this.workers.Length; index++)
-            //{
-            //    Debug.Assert(this.workers[index] != null);
-            //    this.workers[index]!.StartConsume();
-            //}
+            ////////////////////////
 
-            foreach (var path in this.traits.EnumeratePaths(this.basePath))
+            foreach (var entry in this.traits.EnumerateTargetPaths())
             {
                 var required = false;
                 try
                 {
-                    required = this.traits.IsRequiredProcessing(path);
+                    required = this.traits.IsRequiredProcessing(entry);
                 }
                 catch (Exception ex)
                 {
@@ -256,7 +249,7 @@ namespace PowerPlayZipper.Internal.Zip
 
                 var request = this.requestPool.Pop();
                 Debug.Assert(string.IsNullOrEmpty(request.TargetFilePath));
-                request.TargetFilePath = path;
+                request.TargetFilePath = entry.Path;
 
                 this.RequestSpreader.Enqueue(ref request);
                 Debug.Assert(request == null);

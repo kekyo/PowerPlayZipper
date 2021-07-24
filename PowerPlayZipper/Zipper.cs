@@ -69,14 +69,12 @@ namespace PowerPlayZipper
         // Zip core
 
         private void ZipCore(
-            string basePath,
             IZipperTraits traits,
             Action<ProcessedResults> succeeded,
             Action<List<Exception>> failed,
             CancellationToken cancellationToken)
         {
             var context = new Controller(
-                basePath,
                 traits,
                 this.IgnoreEmptyDirectory,
                 (this.MaximumParallelCount >= 1) ? this.MaximumParallelCount : Environment.ProcessorCount,
@@ -127,16 +125,16 @@ namespace PowerPlayZipper
         }
 
         public Task<ProcessedResults> ZipAsync(
-            string zipFilePath,
             string extractToBasePath,
+            string zipFilePath,
             CancellationToken cancellationToken = default) =>
             ZipAsync(
                 this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, null),
                 cancellationToken);
 
         public Task<ProcessedResults> ZipAsync(
-            string zipFilePath,
             string extractToBasePath,
+            string zipFilePath,
             string regexPattern,
             CancellationToken cancellationToken = default) =>
             ZipAsync(

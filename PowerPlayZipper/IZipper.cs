@@ -52,13 +52,13 @@ namespace PowerPlayZipper
             CancellationToken cancellationToken = default);
 
         Task<ProcessedResults> ZipAsync(
+            string basePath,
             string zipFilePath,
-            string extractToBasePath,
             CancellationToken cancellationToken = default);
 
         Task<ProcessedResults> ZipAsync(
+            string basePath,
             string zipFilePath,
-            string extractToBasePath,
             string regexPattern,
             CancellationToken cancellationToken = default);
 #else

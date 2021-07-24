@@ -52,11 +52,11 @@ namespace PowerPlayZipper.Advanced
         {
         }
 
-        public virtual IEnumerable<string> EnumeratePaths(string basePath) =>
-            FileSystemAccessor.EnumeratePaths(basePath);
+        public virtual IEnumerable<PathEntry> EnumerateTargetPaths() =>
+            FileSystemAccessor.EnumeratePaths(this.BasePath);
 
-        public virtual bool IsRequiredProcessing(string path) =>
-            this.RegexPattern?.IsMatch(path) ?? true;
+        public virtual bool IsRequiredProcessing(PathEntry entry) =>
+            this.RegexPattern?.IsMatch(entry.Path) ?? true;
 
         public virtual Stream? OpenForReadFile(string path, int recommendedBufferSize) =>
             FileSystemAccessor.OpenForReadFile(path, recommendedBufferSize);
