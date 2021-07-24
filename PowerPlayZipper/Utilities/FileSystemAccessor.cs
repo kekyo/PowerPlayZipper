@@ -32,6 +32,11 @@ namespace PowerPlayZipper.Utilities
     {
         private const int ERROR_ALREADY_EXISTS = 183;
 
+        public static void CreateDirectoryIfNotExist(object basePath)
+        {
+            throw new NotImplementedException();
+        }
+
 #if NETFRAMEWORK
         // On Windows or mono
         private static readonly bool isOnWindowsNetFx =

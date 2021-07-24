@@ -60,6 +60,9 @@ namespace PowerPlayZipper.Unzip
 
         [Benchmark]
         public Task Run() =>
-            UnzipperTestCore.UnzipByZipFileAsync(this.configuration!, this.zfBasePath!).AsTask();
+            UnzipperTestCore.UnzipByZipFileAsync(
+                this.configuration!.ZipFilePath,
+                this.zfBasePath!).
+            AsTask();
     }
 }

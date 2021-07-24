@@ -34,29 +34,29 @@ namespace PowerPlayZipper.Unzip
                 $"Unzipper_{suffix}");
 
         public static async ValueTask UnzipByPowerPlayZipperAsync(
-            Configurator setup, string basePath, int pcount = -1)
+            string zipFilePath, string basePath, int pcount = -1)
         {
             var unzipper = new Unzipper();
             if (pcount >= 1)
             {
                 unzipper.MaximumParallelCount = pcount;
             }
-            var result = await unzipper.UnzipAsync(setup.ZipFilePath, basePath);
+            var result = await unzipper.UnzipAsync(zipFilePath, basePath);
             Console.WriteLine(result.PrettyPrint);
         }
 
         public static ValueTask UnzipBySharpZipLibAsync(
-            Configurator setup, string basePath)
+            string zipFilePath, string basePath)
         {
             var fastZip = new ICSharpCode.SharpZipLib.Zip.FastZip();
-            fastZip.ExtractZip(setup.ZipFilePath, basePath, "");
+            fastZip.ExtractZip(zipFilePath, basePath, "");
             return default;
         }
 
         public static ValueTask UnzipByZipFileAsync(
-            Configurator setup, string basePath)
+            string zipFilePath, string basePath)
         {
-            System.IO.Compression.ZipFile.ExtractToDirectory(setup.ZipFilePath, basePath);
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipFilePath, basePath);
             return default;
         }
     }

@@ -30,111 +30,76 @@ using PowerPlayZipper.Utilities;
 
 namespace PowerPlayZipper.Zip
 {
-    //[TestFixture]
+    [TestFixture]
     public sealed class ZipperTestFixture
     {
         private Configurator? configuration;
 
-        //[SetUp]
+        [SetUp]
         public Task SetUp()
         {
             this.configuration = new Configurator(Constant.ArtifactUrl);
             return this.configuration.SetUpAsync().AsTask();
         }
 
-        // [Test]
-#if NETFRAMEWORK
-        public async Task Deflate()
-#else
+#if !NETFRAMEWORK
+        [Test]
         public async Task Compare()
-#endif
         {
             var now = DateTime.Now.ToString("mmssfff");
-            var ppzBasePath = ZipperTestCore.GetTempPath($"PPZ{now}");
-            var szlBasePath = ZipperTestCore.GetTempPath($"SZL{now}");
+            var basePath = ZipperTestCore.GetTempPath($"BASE{now}");
+            var ppzZipFilePath = ZipperTestCore.GetTempPath($"PPZ{now}.zip");
+            var extractToBasePath = ZipperTestCore.GetTempPath($"EXT{now}");
 
-            FileSystemAccessor.CreateDirectoryIfNotExist(ppzBasePath);
-            FileSystemAccessor.CreateDirectoryIfNotExist(szlBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(basePath);
 
             var sw = new Stopwatch();
 
             try
             {
                 //////////////////////////////////////////////////////////
-                // Unzip by both libs
+                // Stable unzipping to setup artifacts.
+
+                await Unzip.UnzipperTestCore.UnzipBySharpZipLibAsync(
+                    this.configuration!.ZipFilePath, basePath);
+
+                //////////////////////////////////////////////////////////
+                // Zip by PowerPlayZipper
 
                 sw.Start();
-                await ZipperTestCore.ZipByPowerPlayZipperAsync(this.configuration!, ppzBasePath);
+                await ZipperTestCore.ZipByPowerPlayZipperAsync(
+                    this.configuration!.ZipFilePath, ppzZipFilePath);
                 var ppzTime = sw.Elapsed;
 
-                Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
+                Debug.WriteLine($"PowerPlayZipper.Zipper={ppzTime}");
 
-#if !NETFRAMEWORK   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
-                await ZipperTestCore.ZipBySharpZipLibAsync(this.configuration!, szlBasePath);
-                var szlTime = sw.Elapsed;
+                //////////////////////////////////////////////////////////
+                // Stable unzipping to zipped files.
 
-                Debug.WriteLine($"SharpZipLib.FastZip={szlTime}");
-
-                Debug.WriteLine($"Multiple={(szlTime.TotalSeconds / ppzTime.TotalSeconds):F2}");
+                await Unzip.UnzipperTestCore.UnzipBySharpZipLibAsync(
+                    this.configuration!.ZipFilePath, basePath);
 
                 //////////////////////////////////////////////////////////
                 // Check unzipped files
 
-                var ppzFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(ppzBasePath, "*", SearchOption.AllDirectories).
-                    Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
-                var szlFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(szlBasePath, "*", SearchOption.AllDirectories).
-                    Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
-
-                var ppzExistBySzl = new HashSet<string>(
-                    ppzFiles.Where(ppzFile => szlFiles.Contains(ppzFile)));
-                var szlExistByPpz = new HashSet<string>(
-                    szlFiles.Where(szlFile => ppzFiles.Contains(szlFile)));
-
-                // Matched file count is same.
-                Assert.AreEqual(ppzExistBySzl.Count, ppzFiles.Count);
-                Assert.AreEqual(szlExistByPpz.Count, szlFiles.Count);
-
-                // All files have to equal.
-                Parallel.ForEach(ppzFiles, file =>
-                {
-                    using (var ppzStream = File.OpenRead(Path.Combine(ppzBasePath, file)))
-                    {
-                        using (var szlStream = File.OpenRead(Path.Combine(szlBasePath, file)))
-                        {
-                            var ppzBuffer = new byte[65536];
-                            var szlBuffer = new byte[65536];
-                            var ppzRead = ppzStream.Read(ppzBuffer, 0, ppzBuffer.Length);
-                            var szlRead = szlStream.Read(szlBuffer, 0, szlBuffer.Length);
-
-                            Assert.AreEqual(ppzRead, szlRead);
-                            for (var index = 0; index < ppzRead; index++)
-                            {
-                                if (ppzBuffer[index] != szlBuffer[index])
-                                {
-                                    Assert.Fail($"{file}: Differ: Index={index}");
-                                }
-                            }
-                        }
-                    }
-                });
-#endif
+                TestUtilities.AssertCompareFiles(basePath, extractToBasePath);
             }
             finally
             {
-                FileSystemAccessor.DeleteDirectoryRecursive(ppzBasePath);
-                FileSystemAccessor.DeleteDirectoryRecursive(szlBasePath);
+                FileSystemAccessor.DeleteDirectoryRecursive(basePath);
+                FileSystemAccessor.DeleteDirectoryRecursive(extractToBasePath);
+                File.Delete(ppzZipFilePath);
             }
         }
+#endif
 
         //[Test]
         public void Profile()
         {
             var now = DateTime.Now.ToString("mmssfff");
-            var ppzBasePath = ZipperTestCore.GetTempPath($"PPZ{now}");
+            var basePath = ZipperTestCore.GetTempPath($"BASE{now}");
 
-            FileSystemAccessor.CreateDirectoryIfNotExist(ppzBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(basePath);
 
             var sw = new Stopwatch();
 
@@ -144,14 +109,17 @@ namespace PowerPlayZipper.Zip
                 // Zip by both libs
 
                 sw.Start();
-                ZipperTestCore.ZipByPowerPlayZipperAsync(this.configuration!, ppzBasePath).GetAwaiter().GetResult();
+                ZipperTestCore.ZipByPowerPlayZipperAsync(
+                    this.configuration!.ZipFilePath, basePath).
+                    GetAwaiter().
+                    GetResult();
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Zipper={ppzTime}");
             }
             finally
             {
-                FileSystemAccessor.DeleteDirectoryRecursive(ppzBasePath);
+                FileSystemAccessor.DeleteDirectoryRecursive(basePath);
             }
         }
     }

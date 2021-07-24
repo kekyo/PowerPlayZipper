@@ -64,13 +64,15 @@ namespace PowerPlayZipper.Unzip
                 // Unzip by both libs
 
                 sw.Start();
-                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.configuration!, ppzBasePath);
+                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(
+                    this.configuration!.ZipFilePath, ppzBasePath);
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
 
 #if !NETFRAMEWORK   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
-                await UnzipperTestCore.UnzipBySharpZipLibAsync(this.configuration!, szlBasePath);
+                await UnzipperTestCore.UnzipBySharpZipLibAsync(
+                    this.configuration!.ZipFilePath, szlBasePath);
                 var szlTime = sw.Elapsed;
 
                 Debug.WriteLine($"SharpZipLib.FastZip={szlTime}");
@@ -80,45 +82,7 @@ namespace PowerPlayZipper.Unzip
                 //////////////////////////////////////////////////////////
                 // Check unzipped files
 
-                var ppzFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(ppzBasePath, "*", SearchOption.AllDirectories).
-                    Select(ppzFile => ppzFile.Substring(ppzBasePath.Length + 1)));
-                var szlFiles = new HashSet<string>(
-                    Directory.EnumerateFiles(szlBasePath, "*", SearchOption.AllDirectories).
-                    Select(szlFile => szlFile.Substring(szlBasePath.Length + 1)));
-
-                var ppzExistBySzl = new HashSet<string>(
-                    ppzFiles.Where(ppzFile => szlFiles.Contains(ppzFile)));
-                var szlExistByPpz = new HashSet<string>(
-                    szlFiles.Where(szlFile => ppzFiles.Contains(szlFile)));
-
-                // Matched file count is same.
-                Assert.AreEqual(ppzExistBySzl.Count, ppzFiles.Count);
-                Assert.AreEqual(szlExistByPpz.Count, szlFiles.Count);
-
-                // All files have to equal.
-                Parallel.ForEach(ppzFiles, file =>
-                {
-                    using (var ppzStream = File.OpenRead(Path.Combine(ppzBasePath, file)))
-                    {
-                        using (var szlStream = File.OpenRead(Path.Combine(szlBasePath, file)))
-                        {
-                            var ppzBuffer = new byte[65536];
-                            var szlBuffer = new byte[65536];
-                            var ppzRead = ppzStream.Read(ppzBuffer, 0, ppzBuffer.Length);
-                            var szlRead = szlStream.Read(szlBuffer, 0, szlBuffer.Length);
-
-                            Assert.AreEqual(ppzRead, szlRead);
-                            for (var index = 0; index < ppzRead; index++)
-                            {
-                                if (ppzBuffer[index] != szlBuffer[index])
-                                {
-                                    Assert.Fail($"{file}: Differ: Index={index}");
-                                }
-                            }
-                        }
-                    }
-                });
+                TestUtilities.AssertCompareFiles(ppzBasePath, szlBasePath);
 #endif
             }
             finally
@@ -144,7 +108,10 @@ namespace PowerPlayZipper.Unzip
                 // Unzip by both libs
 
                 sw.Start();
-                UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.configuration!, ppzBasePath).GetAwaiter().GetResult();
+                UnzipperTestCore.UnzipByPowerPlayZipperAsync(
+                    this.configuration!.ZipFilePath, ppzBasePath).
+                    GetAwaiter().
+                    GetResult();
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
