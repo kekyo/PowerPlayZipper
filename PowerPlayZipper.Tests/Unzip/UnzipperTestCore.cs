@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 using PowerPlayZipper.Utilities;
 
-namespace PowerPlayZipper
+namespace PowerPlayZipper.Unzip
 {
     public static class UnzipperTestCore
     {
@@ -34,7 +34,7 @@ namespace PowerPlayZipper
                 $"Unzipper_{suffix}");
 
         public static async ValueTask UnzipByPowerPlayZipperAsync(
-            UnzipperTestSetup setup, string basePath, int pcount = -1)
+            Configurator setup, string basePath, int pcount = -1)
         {
             var unzipper = new Unzipper();
             if (pcount >= 1)
@@ -46,7 +46,7 @@ namespace PowerPlayZipper
         }
 
         public static ValueTask UnzipBySharpZipLibAsync(
-            UnzipperTestSetup setup, string basePath)
+            Configurator setup, string basePath)
         {
             var fastZip = new ICSharpCode.SharpZipLib.Zip.FastZip();
             fastZip.ExtractZip(setup.ZipFilePath, basePath, "");
@@ -54,7 +54,7 @@ namespace PowerPlayZipper
         }
 
         public static ValueTask UnzipByZipFileAsync(
-            UnzipperTestSetup setup, string basePath)
+            Configurator setup, string basePath)
         {
             System.IO.Compression.ZipFile.ExtractToDirectory(setup.ZipFilePath, basePath);
             return default;

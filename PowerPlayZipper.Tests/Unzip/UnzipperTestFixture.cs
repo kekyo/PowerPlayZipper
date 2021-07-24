@@ -28,22 +28,18 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using PowerPlayZipper.Utilities;
 
-namespace PowerPlayZipper
+namespace PowerPlayZipper.Unzip
 {
     [TestFixture]
     public sealed class UnzipperTestFixture
     {
-        private static readonly string artifactUrl =
-            //@"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
-            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
-            
-        private UnzipperTestSetup? setup;
+        private Configurator? configuration;
 
         [SetUp]
         public Task SetUp()
         {
-            this.setup = new UnzipperTestSetup(artifactUrl);
-            return this.setup.SetUpAsync().AsTask();
+            this.configuration = new Configurator(Constant.ArtifactUrl);
+            return this.configuration.SetUpAsync().AsTask();
         }
 
         [Test]
@@ -68,13 +64,13 @@ namespace PowerPlayZipper
                 // Unzip by both libs
 
                 sw.Start();
-                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath);
+                await UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.configuration!, ppzBasePath);
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");
 
 #if !NETFRAMEWORK   // Because SharpZipLib is hard-coded non long path aware code, it will cause PathTooLongException on netfx.
-                await UnzipperTestCore.UnzipBySharpZipLibAsync(this.setup!, szlBasePath);
+                await UnzipperTestCore.UnzipBySharpZipLibAsync(this.configuration!, szlBasePath);
                 var szlTime = sw.Elapsed;
 
                 Debug.WriteLine($"SharpZipLib.FastZip={szlTime}");
@@ -148,7 +144,7 @@ namespace PowerPlayZipper
                 // Unzip by both libs
 
                 sw.Start();
-                UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.setup!, ppzBasePath).GetAwaiter().GetResult();
+                UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.configuration!, ppzBasePath).GetAwaiter().GetResult();
                 var ppzTime = sw.Elapsed;
 
                 Debug.WriteLine($"PowerPlayZipper.Unzipper={ppzTime}");

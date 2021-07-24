@@ -18,18 +18,22 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-using System.IO;
-
-using PowerPlayZipper.Utilities;
-
-namespace PowerPlayZipper.Internal.Zip
+namespace PowerPlayZipper
 {
-    /// <summary>
-    /// Request packet from parser to worker.
-    /// </summary>
-    internal sealed class RequestInformation : StackableElement
+    public interface IConstant
     {
-        public PathEntry Entry;
-        public Stream? CompressedStream;
+        string ArtifactUrl { get; }
+    }
+
+    public sealed class ArtifactFromDotnetDocs : IConstant
+    {
+        public string ArtifactUrl =>
+            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
+    }
+
+    public sealed class ArtifactFromMixedRealityToolKit : IConstant
+    {
+        public string ArtifactUrl =>
+            @"https://github.com/microsoft/MixedRealityToolkit/archive/b63b40b9a4bd4e350f35986d450dd5393c6e58a0.zip";
     }
 }

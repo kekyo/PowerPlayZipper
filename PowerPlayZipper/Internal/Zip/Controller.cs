@@ -22,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Threading;
 
@@ -38,6 +39,7 @@ namespace PowerPlayZipper.Internal.Zip
         //private Parser? parser;
 
         private readonly IZipperTraits traits;
+        private readonly int streamBufferSize;
         private readonly Action<ProcessedResults> succeeded;
         private readonly Action<List<Exception>> failed;
         private readonly List<Exception> caughtExceptions = new();
@@ -69,6 +71,7 @@ namespace PowerPlayZipper.Internal.Zip
             this.Encoding = encoding;
 
             this.traits = traits;
+            this.streamBufferSize = streamBufferSize;
             this.succeeded = succeeded;
             this.failed = failed;
             
@@ -248,14 +251,81 @@ namespace PowerPlayZipper.Internal.Zip
                 }
 
                 var request = this.requestPool.Pop();
-                Debug.Assert(string.IsNullOrEmpty(request.TargetFilePath));
-                request.TargetFilePath = entry.Path;
+                Debug.Assert(string.IsNullOrEmpty(request.Entry.Path));
+                Debug.Assert(request.CompressedStream == null);
+                request.Entry = entry;
 
-                this.RequestSpreader.Enqueue(ref request);
+                if (entry.IsDirectory)
+                {
+                    this.RequestCombiner.Enqueue(ref request);
+                }
+                else
+                {
+                    this.RequestSpreader.Enqueue(ref request);
+                }
+
                 Debug.Assert(request == null);
             }
-            
-            //this.parser!.Start();
+
+            while (true)
+            {
+                var request = this.RequestSpreader.Dequeue();
+                if (request == null)
+                {
+                    break;
+                }
+
+                Debug.Assert(!string.IsNullOrEmpty(request.Entry.Path));
+                Debug.Assert(request.CompressedStream == null);
+
+                if (request.Entry.IsDirectory)
+                {
+                    continue;
+                }
+
+                var ms = new MemoryStream();
+                using (var fileStream = this.traits.OpenForReadFile(request.Entry.Path, this.streamBufferSize))
+                {
+                    using (var compressedStream = new DeflateStream(
+                        ms, CompressionMode.Compress, false))
+                    {
+                        var buffer = new byte[this.streamBufferSize];
+
+                        while (true)
+                        {
+                            var read = fileStream!.Read(buffer, 0, this.streamBufferSize);
+                            if (read <= 0)
+                            {
+                                break;
+                            }
+
+                            compressedStream.Write(buffer, 0, read);
+                        }
+
+                        compressedStream.Flush();
+                    }
+                }
+
+                ms.Position = 0;
+                request.CompressedStream = ms;
+
+                this.RequestCombiner.Enqueue(ref request);
+                Debug.Assert(request == null);
+            }
+
+            while (true)
+            {
+                var request = this.RequestCombiner.Dequeue();
+                if (request == null)
+                {
+                    break;
+                }
+
+                Debug.Assert(!string.IsNullOrEmpty(request.Entry.Path));
+                Debug.Assert(request.CompressedStream == null);
+
+
+            }
         }
 
         /// <summary>

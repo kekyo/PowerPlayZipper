@@ -58,7 +58,7 @@ namespace PowerPlayZipper.Advanced
         public virtual bool IsRequiredProcessing(PathEntry entry) =>
             this.RegexPattern?.IsMatch(entry.Path) ?? true;
 
-        public virtual Stream? OpenForReadFile(string path, int recommendedBufferSize) =>
+        public virtual Stream OpenForReadFile(string path, int recommendedBufferSize) =>
             FileSystemAccessor.OpenForReadFile(path, recommendedBufferSize);
 
         public virtual string GetTargetPath(ZippedFileEntry entry) =>

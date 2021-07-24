@@ -23,42 +23,43 @@ using System.Threading.Tasks;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
+
 using PowerPlayZipper.Utilities;
 
-namespace PowerPlayZipper
+namespace PowerPlayZipper.Unzip
 {
     [SimpleJob(RuntimeMoniker.Net50)]
     [PlainExporter]
     [MarkdownExporterAttribute.GitHub]
-    public class SharpZipLibUnzipperBenchmark<TArtifact>
-        where TArtifact : IArtifact, new()
+    public class ZipFileUnzipperBenchmark<TArtifact>
+        where TArtifact : IConstant, new()
     {
-        private UnzipperTestSetup? setup;
+        private Configurator? configuration;
 
         [GlobalSetup]
         public Task GlobalSetup()
         {
-            this.setup = new UnzipperTestSetup(new TArtifact().ArtifactUrl);
-            return this.setup.SetUpAsync().AsTask();
+            this.configuration = new Configurator(new TArtifact().ArtifactUrl);
+            return this.configuration.SetUpAsync().AsTask();
         }
 
-        private string? szlBasePath;
+        private string? zfBasePath;
 
         [IterationSetup]
         public void Setup()
         {
             var now = DateTime.Now.ToString("mmssfff");
-            this.szlBasePath = UnzipperTestCore.GetTempPath($"SZL{now}");
+            this.zfBasePath = UnzipperTestCore.GetTempPath($"ZF{now}");
 
-            FileSystemAccessor.CreateDirectoryIfNotExist(this.szlBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(this.zfBasePath);
         }
 
         [IterationCleanup]
         public void Cleanup() =>
-            FileSystemAccessor.DeleteDirectoryRecursive(this.szlBasePath!);
+            FileSystemAccessor.DeleteDirectoryRecursive(this.zfBasePath!);
 
         [Benchmark]
         public Task Run() =>
-            UnzipperTestCore.UnzipBySharpZipLibAsync(this.setup!, this.szlBasePath!).AsTask();
+            UnzipperTestCore.UnzipByZipFileAsync(this.configuration!, this.zfBasePath!).AsTask();
     }
 }

@@ -27,8 +27,8 @@ namespace PowerPlayZipper.Internal.Zip
     internal sealed class BypassProcessingZipperTraits : DefaultZipperTraits
     {
         public BypassProcessingZipperTraits(
-            string zipFilePath, string extractToBasePath, string? regexPattern) :
-            base(extractToBasePath, zipFilePath, regexPattern)
+            string basePath, string zipFilePath, string? regexPattern) :
+            base(basePath, zipFilePath, regexPattern)
         { }
 
         public event EventHandler<ProcessingEventArgs>? Processing;

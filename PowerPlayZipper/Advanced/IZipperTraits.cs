@@ -33,7 +33,7 @@ namespace PowerPlayZipper.Advanced
 
         bool IsRequiredProcessing(PathEntry entry);
 
-        Stream? OpenForReadFile(string path, int recommendedBufferSize);
+        Stream OpenForReadFile(string path, int recommendedBufferSize);
 
         string GetTargetPath(ZippedFileEntry entry);
 

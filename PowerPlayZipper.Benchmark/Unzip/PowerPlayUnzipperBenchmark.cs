@@ -19,46 +19,52 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
+
 using PowerPlayZipper.Utilities;
 
-namespace PowerPlayZipper
+namespace PowerPlayZipper.Unzip
 {
     [SimpleJob(RuntimeMoniker.Net50)]
     [PlainExporter]
     [MarkdownExporterAttribute.GitHub]
-    public class ZipFileUnzipperBenchmark<TArtifact>
-        where TArtifact : IArtifact, new()
+    public class PowerPlayUnzipperBenchmark<TArtifact>
+        where TArtifact : IConstant, new()
     {
-        private UnzipperTestSetup? setup;
+        private Configurator? configuration;
 
         [GlobalSetup]
         public Task GlobalSetup()
         {
-            this.setup = new UnzipperTestSetup(new TArtifact().ArtifactUrl);
-            return this.setup.SetUpAsync().AsTask();
+            this.configuration = new Configurator(new TArtifact().ArtifactUrl);
+            return this.configuration.SetUpAsync().AsTask();
         }
 
-        private string? zfBasePath;
+        private string? ppzBasePath;
 
         [IterationSetup]
         public void Setup()
         {
             var now = DateTime.Now.ToString("mmssfff");
-            this.zfBasePath = UnzipperTestCore.GetTempPath($"ZF{now}");
+            this.ppzBasePath = UnzipperTestCore.GetTempPath(
+                $"PPZ{now}",
+                (Environment.OSVersion.Platform == PlatformID.Win32NT) ?
+                    Path.GetFullPath(".").Substring(0, 3) :
+                    null);
 
-            FileSystemAccessor.CreateDirectoryIfNotExist(this.zfBasePath);
+            FileSystemAccessor.CreateDirectoryIfNotExist(this.ppzBasePath);
         }
 
         [IterationCleanup]
         public void Cleanup() =>
-            FileSystemAccessor.DeleteDirectoryRecursive(this.zfBasePath!);
+            FileSystemAccessor.DeleteDirectoryRecursive(this.ppzBasePath!);
 
         [Benchmark]
         public Task Run() =>
-            UnzipperTestCore.UnzipByZipFileAsync(this.setup!, this.zfBasePath!).AsTask();
+            UnzipperTestCore.UnzipByPowerPlayZipperAsync(this.configuration!, this.ppzBasePath!).AsTask();
     }
 }

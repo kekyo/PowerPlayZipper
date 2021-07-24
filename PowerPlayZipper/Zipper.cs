@@ -21,7 +21,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 using System.Threading;
 
@@ -88,9 +87,9 @@ namespace PowerPlayZipper
         }
 
         private BypassProcessingZipperTraits CreateBypassZipperTraits(
-            string zipFilePath, string extractToBasePath, string? regexPattern)
+            string basePath, string zipFilePath, string? regexPattern)
         {
-            var traits = new BypassProcessingZipperTraits(zipFilePath, extractToBasePath, regexPattern);
+            var traits = new BypassProcessingZipperTraits(basePath, zipFilePath, regexPattern);
             if (this.Processing is { } processing)
             {
                 traits.Processing += (_, e) => processing.Invoke(this, e);
@@ -129,7 +128,7 @@ namespace PowerPlayZipper
             string zipFilePath,
             CancellationToken cancellationToken = default) =>
             ZipAsync(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, null),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, null),
                 cancellationToken);
 
         public Task<ProcessedResults> ZipAsync(
@@ -138,7 +137,7 @@ namespace PowerPlayZipper
             string regexPattern,
             CancellationToken cancellationToken = default) =>
             ZipAsync(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, regexPattern),
                 cancellationToken);
 #endif
 
@@ -212,7 +211,7 @@ namespace PowerPlayZipper
             string extractToBasePath,
             CancellationToken cancellationToken = default) =>
             SynchronousZip(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, null),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, null),
                 cancellationToken);
 
 #if !NET20 && !NET35
@@ -226,7 +225,7 @@ namespace PowerPlayZipper
             string regexPattern,
             CancellationToken cancellationToken = default) =>
             SynchronousZip(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, regexPattern),
                 cancellationToken);
 
 #if !NET20 && !NET35
@@ -243,20 +242,20 @@ namespace PowerPlayZipper
                 cancellationToken);
 
         ProcessedResults ISynchronousZipper.Zip(
-            string zipFilePath,
             string extractToBasePath,
+            string zipFilePath,
             CancellationToken cancellationToken) =>
             SynchronousZip(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, null),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, null),
                 cancellationToken);
 
         ProcessedResults ISynchronousZipper.Zip(
-            string zipFilePath,
             string extractToBasePath,
+            string zipFilePath,
             string regexPattern,
             CancellationToken cancellationToken) =>
             SynchronousZip(
-                this.CreateBypassZipperTraits(zipFilePath, extractToBasePath, regexPattern),
+                this.CreateBypassZipperTraits(extractToBasePath, zipFilePath, regexPattern),
                 cancellationToken);
 #endif
     }

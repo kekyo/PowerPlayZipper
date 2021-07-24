@@ -27,16 +27,16 @@ using System.Threading.Tasks;
 
 namespace PowerPlayZipper
 {
-    public sealed class UnzipperTestSetup
+    public sealed class Configurator
     {
         public readonly string ZipFilePath;
 
         private readonly Uri artifactUrl;
 
-        public UnzipperTestSetup(string artifactUrl)
+        public Configurator(string artifactUrl)
         {
             this.artifactUrl = new Uri(artifactUrl, UriKind.RelativeOrAbsolute);
-            var testBasePath = Path.GetDirectoryName(typeof(UnzipperTestSetup).Assembly.Location)!;
+            var testBasePath = Path.GetDirectoryName(typeof(Configurator).Assembly.Location)!;
             this.ZipFilePath = Path.Combine(testBasePath, this.artifactUrl.PathAndQuery.Split('/').Last());
         }
 

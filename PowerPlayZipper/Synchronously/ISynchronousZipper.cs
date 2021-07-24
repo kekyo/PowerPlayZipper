@@ -40,13 +40,13 @@ namespace PowerPlayZipper.Synchronously
             CancellationToken cancellationToken = default);
 
         ProcessedResults Zip(
+            string basePath,
             string zipFilePath,
-            string extractToBasePath,
             CancellationToken cancellationToken = default);
 
         ProcessedResults Zip(
+            string basePath,
             string zipFilePath,
-            string extractToBasePath,
             string regexPattern,
             CancellationToken cancellationToken = default);
 #endif

@@ -18,18 +18,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-using System.IO;
-
-using PowerPlayZipper.Utilities;
-
-namespace PowerPlayZipper.Internal.Zip
+namespace PowerPlayZipper
 {
-    /// <summary>
-    /// Request packet from parser to worker.
-    /// </summary>
-    internal sealed class RequestInformation : StackableElement
+    internal static class Constant
     {
-        public PathEntry Entry;
-        public Stream? CompressedStream;
+        public static readonly string ArtifactUrl =
+            //@"https://github.com/dotnet/sourcelink/archive/4b584dbc392bb1aad49c2eb1ab84d8b489b6dccc.zip";
+            @"https://github.com/dotnet/docs/archive/7814398e1e1b5bd7262f1932b743e9a30caef2c5.zip";
     }
 }
